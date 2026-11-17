@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>一笔记账 · 15s 宣传动效</title>
+<style>
+:root{
+  --cn:"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei UI","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC",sans-serif;
+  --num:"SF Pro Display","Segoe UI","Helvetica Neue",Arial,var(--cn);
+  --ink:#1C1B19;--paper:#F4EFE6;--acc:#FF5A36;--mute:#7C766B;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:#0d0d0c;overflow:hidden}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;background:var(--paper);overflow:hidden;transform-origin:0 0;font-family:var(--cn);color:var(--ink)}
+.scene{position:absolute;left:0;top:0;width:1920px;height:1080px}
+.blob{position:absolute;border-radius:50%}
+.num{position:absolute;top:0;font-family:var(--num);font-weight:700;color:var(--ink);white-space:nowrap}
+#hw{position:absolute;left:0;top:300px;width:1920px;text-align:center}
+.hl{overflow:hidden;height:176px;font-size:136px;font-weight:800;line-height:176px;letter-spacing:4px}
+.hl span{display:inline-block}
+em{font-style:normal;color:var(--acc)}
+#h1c{position:absolute;left:0;top:700px;width:1920px;text-align:center;font-size:40px;color:var(--mute);letter-spacing:8px}
+.copy{position:absolute;left:170px;top:320px}
+.tag{font-family:var(--num);font-size:26px;font-weight:700;letter-spacing:4px;color:var(--acc);margin-bottom:30px}
+.ln{font-size:104px;font-weight:800;line-height:134px;letter-spacing:2px;white-space:nowrap}
+.sub{margin-top:34px;font-size:34px;color:var(--mute);white-space:nowrap}
+.copy>div{will-change:transform,opacity}
+
+/* phone */
+#phone{position:absolute;left:1160px;top:90px;width:440px;height:900px;border-radius:68px;background:var(--ink);padding:14px;box-shadow:0 70px 120px -30px rgba(80,50,20,.35),0 20px 40px rgba(80,50,20,.12)}
+#screen{position:relative;width:412px;height:872px;border-radius:56px;background:#FBF8F3;overflow:hidden}
+#isl{position:absolute;top:14px;left:146px;width:120px;height:34px;border-radius:17px;background:var(--ink)}
+#date{position:absolute;top:66px;left:0;width:412px;text-align:center;font-size:20px;color:#8A8478;letter-spacing:1px}
+#amtWrap{position:absolute;right:34px;top:112px;font-family:var(--num);font-weight:700;display:flex;align-items:baseline;transform-origin:right bottom}
+#amtWrap .y{font-size:50px;margin-right:10px;color:#B9B1A4}
+#amt{font-size:112px;line-height:1;letter-spacing:-2px}
+#note{position:absolute;top:248px;left:30px;font-size:22px;color:#8A8478}
+#note b{color:var(--ink);font-weight:600;margin-left:12px}
+.chip{position:absolute;width:82px;height:90px;border-radius:20px;background:#F1EBE1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:18px;color:#4A463F;border:2px solid transparent}
+.chip i{width:32px;height:32px;border-radius:50%;display:block}
+.key{position:absolute;width:82px;height:66px;border-radius:18px;background:#F1EBE1;display:flex;align-items:center;justify-content:center;font-family:var(--num);font-size:32px;font-weight:600;color:var(--ink)}
+.key.sm{font-family:var(--cn);font-size:20px;color:#6A645A}
+#save{background:var(--acc);color:#fff;font-family:var(--cn);font-size:26px;font-weight:700;height:142px}
+#rip{position:absolute;width:96px;height:96px;margin:-48px 0 0 -48px;border-radius:50%;background:rgba(255,90,54,.22);border:3px solid rgba(255,90,54,.55);opacity:0}
+#toast{position:absolute;left:18px;top:18px;width:376px;height:88px;border-radius:28px;background:var(--ink);color:#fff;display:flex;align-items:center;padding:0 24px;gap:14px;font-size:22px;box-shadow:0 14px 30px rgba(0,0,0,.18)}
+.ck{width:40px;height:40px;border-radius:50%;background:#2FBF71;display:flex;align-items:center;justify-content:center;flex:none}
+#toast .r{margin-left:auto;font-family:var(--num);font-weight:700;font-size:26px}
+#toast small{display:block;font-size:16px;color:#B5AEA2;margin-top:2px}
+
+/* scene 3 */
+#donut{position:absolute;left:880px;top:240px;width:600px;height:600px}
+#donut svg{position:absolute;left:0;top:0}
+#dc{position:absolute;left:0;top:0;width:600px;height:600px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#dc .l{font-size:28px;color:var(--mute);letter-spacing:2px}
+#cnt{font-family:var(--num);font-size:92px;font-weight:800;letter-spacing:-1px;margin-top:6px}
+#lg{position:absolute;left:1580px;top:362px;width:250px}
+.li{display:flex;align-items:center;gap:18px;height:72px;font-size:30px}
+.sw{width:22px;height:22px;border-radius:7px;flex:none}
+.li .pc{margin-left:auto;font-family:var(--num);font-weight:700}
+#co{position:absolute;left:1250px;top:196px;background:var(--ink);color:#fff;font-size:24px;padding:16px 26px;border-radius:32px;white-space:nowrap;transform-origin:left bottom}
+#co b{color:#FFB39F;font-family:var(--num)}
+
+/* scene 4 */
+#card{position:absolute;left:1000px;top:250px;width:760px;background:#fff;border-radius:40px;padding:48px 52px 40px;box-shadow:0 60px 110px -40px rgba(80,50,20,.30)}
+.hd{display:flex;align-items:baseline;justify-content:space-between}
+.hd .a{font-size:32px;font-weight:700}
+.hd .b{font-size:24px;color:var(--mute)}
+#bud{margin-top:26px;font-family:var(--num);font-size:84px;font-weight:800;letter-spacing:-1px}
+#bud span{font-size:36px;color:#B0A898;font-weight:600;letter-spacing:0}
+.track{margin-top:22px;height:26px;border-radius:13px;background:#EFE9DF;overflow:hidden}
+#bfill{height:100%;width:0;border-radius:13px}
+#bpct{margin-top:14px;font-size:24px;color:var(--mute)}
+.div{height:2px;background:#F1ECE3;margin:30px 0 14px}
+.row{display:flex;align-items:center;gap:20px;height:64px;font-size:26px}
+.row .n{width:70px}
+.mt{flex:1;height:12px;border-radius:6px;background:#F1ECE3;overflow:hidden}
+.mf{height:100%;width:0;border-radius:6px}
+.row .v{width:200px;text-align:right;font-family:var(--num);font-size:24px;color:#5E594F}
+#nt{position:absolute;left:1040px;top:108px;width:680px;height:100px;border-radius:32px;background:var(--ink);color:#fff;display:flex;align-items:center;gap:20px;padding:0 28px;font-size:26px;box-shadow:0 24px 50px rgba(0,0,0,.2)}
+.bell{width:52px;height:52px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center;flex:none}
+#nt b{font-weight:700;margin-right:12px}
+#nt .x{color:#D9D2C6}
+
+/* scene 5 */
+#s5{background:var(--ink);clip-path:circle(0px at 50% 50%)}
+#logo{position:absolute;left:876px;top:206px;width:168px;height:168px}
+#name{position:absolute;left:0;top:420px;width:1920px;text-align:center;font-size:150px;font-weight:800;color:#F4EFE6;letter-spacing:12px;line-height:1.1}
+#slog{position:absolute;left:0;top:632px;width:1920px;text-align:center;font-size:54px;color:#D8CFC1;letter-spacing:6px}
+#foot{position:absolute;left:0;top:810px;width:1920px;text-align:center;font-size:28px;color:#8A8276;letter-spacing:3px}
+#foot i{display:inline-block;width:60px;height:2px;background:#4A4640;vertical-align:middle;margin:0 24px}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="blob" id="b1" style="width:980px;height:980px;left:1180px;top:-360px;background:#FCE3D7"></div>
+  <div class="blob" id="b2" style="width:700px;height:700px;left:-260px;top:620px;background:#E6EDDF"></div>
+
+  <!-- S1 hook -->
+  <div class="scene" id="s1">
+    <div id="nums"></div>
+    <div id="hw">
+      <div class="hl" id="h1a"><span>上个月的工资，</span></div>
+      <div class="hl" id="h1b"><span>都<em>去哪儿了？</em></span></div>
+    </div>
+    <div id="h1c">外卖 · 打车 · 奶茶 · 会员 · 网购……</div>
+  </div>
+
+  <!-- S2 record -->
+  <div class="scene" id="s2">
+    <div class="copy">
+      <div class="tag" id="t2">01 / 随手记</div>
+      <div class="ln" id="t2a">随手一记，</div>
+      <div class="ln" id="t2b">3 秒<em>搞定</em>。</div>
+      <div class="sub" id="t2c">数字键盘 + 智能分类，单手记完一笔</div>
+    </div>
+    <div id="phone"><div id="screen">
+      <div id="isl"></div>
+      <div id="date">10月30日 周五 · 支出</div>
+      <div id="amtWrap"><span class="y">¥</span><span id="amt">0</span></div>
+      <div id="note">备注<b>午饭</b></div>
+      <div id="chips"></div>
+      <div id="keys"></div>
+      <div id="rip"></div>
+      <div id="toast"><div class="ck"><svg width="22" height="22" viewBox="0 0 22 22"><path d="M5 11.5l4 4 8-9" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div>已记录<small>餐饮 · 午饭</small></div><div class="r">-¥32.00</div></div>
+    </div></div>
+  </div>
+
+  <!-- S3 report -->
+  <div class="scene" id="s3">
+    <div class="copy">
+      <div class="tag" id="t3">02 / 看得清</div>
+      <div class="ln" id="t3a">钱花在哪，</div>
+      <div class="ln" id="t3b">一眼<em>就懂</em>。</div>
+      <div class="sub" id="t3c">自动生成月报，每一类开销都有数</div>
+    </div>
+    <div id="donut">
+      <svg width="600" height="600" viewBox="0 0 600 600" id="dsvg">
+        <circle cx="300" cy="300" r="230" fill="none" stroke="#EAE3D7" stroke-width="64"/>
+      </svg>
+      <div id="dc"><div class="l">本月支出</div><div id="cnt">¥0</div></div>
+    </div>
+    <div id="co">外卖 <b>23</b> 单，占餐饮 <b>61%</b></div>
+    <div id="lg"></div>
+  </div>
+
+  <!-- S4 budget -->
+  <div class="scene" id="s4">
+    <div class="copy">
+      <div class="tag" id="t4">03 / 管得住</div>
+      <div class="ln" id="t4a">预算快超了，</div>
+      <div class="ln" id="t4b">它<em>先提醒</em>你。</div>
+      <div class="sub" id="t4c">设好月度预算，超支之前就知道</div>
+    </div>
+    <div id="card">
+      <div class="hd"><div class="a">十月预算</div><div class="b">还剩 2 天</div></div>
+      <div id="bud">¥4,286<span> / ¥5,000</span></div>
+      <div class="track"><div id="bfill"></div></div>
+      <div id="bpct">已用 0%</div>
+      <div class="div"></div>
+      <div class="row" id="r0"><div class="n">餐饮</div><div class="mt"><div class="mf" style="background:#FF5A36"></div></div><div class="v" style="color:#FF5A36">¥1,629 / 1,500</div></div>
+      <div class="row" id="r1"><div class="n">交通</div><div class="mt"><div class="mf" style="background:#3D7BFF"></div></div><div class="v">¥600 / 800</div></div>
+      <div class="row" id="r2"><div class="n">购物</div><div class="mt"><div class="mf" style="background:#F5B700"></div></div><div class="v">¥557 / 900</div></div>
+    </div>
+    <div id="nt"><div class="bell"><svg width="26" height="26" viewBox="0 0 26 26"><path d="M13 3.5c-3.9 0-6.5 3-6.5 6.6v4.6L4.5 18h17l-2-3.3v-4.6c0-3.6-2.6-6.6-6.5-6.6z" fill="#fff"/><circle cx="13" cy="21" r="2.4" fill="#fff"/></svg></div><div><b>预算提醒</b><span class="x">餐饮本月已超支 ¥129，悠着点</span></div></div>
+  </div>
+
+  <!-- S5 brand -->
+  <div class="scene" id="s5">
+    <svg id="logo" viewBox="0 0 168 168"><rect width="168" height="168" rx="44" fill="#FF5A36"/><rect id="lbar" x="38" y="76" width="92" height="18" rx="9" fill="#fff"/><circle id="ldot" cx="126" cy="48" r="12" fill="#FFD9CC"/></svg>
+    <div id="name">一笔记账</div>
+    <div id="slog">每一笔，都算数。</div>
+    <div id="foot">iOS<i></i>Android<i></i>现已上线 · 免费下载</div>
+  </div>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const stage=$('stage');
+function fit(){const s=Math.min(innerWidth/1920,innerHeight/1080);stage.style.transform='translate('+((innerWidth-1920*s)/2)+'px,'+((innerHeight-1080*s)/2)+'px) scale('+s+')';}
+addEventListener('resize',fit);fit();
+
+const cl=x=>x<0?0:x>1?1:x;
+const P=(t,a,b)=>cl((t-a)/(b-a));
+const eo=x=>1-Math.pow(1-x,3);
+const eo5=x=>1-Math.pow(1-x,5);
+const eio=x=>x<0.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const eb=x=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2);};
+function S(el,o,x,y,s,r){el.style.opacity=o;el.style.transform='translate('+(x||0)+'px,'+(y||0)+'px) scale('+(s==null?1:s)+') rotate('+(r||0)+'deg)';}
+function vis(el,v){el.style.visibility=v?'visible':'hidden';}
+function rise(el,t,a,dur,dy){const k=eo(P(t,a,a+(dur||650)));S(el,k,0,(1-k)*(dy||56),1);}
+function rng(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function hex(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+function mix(a,b,t){const A=hex(a),B=hex(b);return'rgb('+A.map((v,i)=>Math.round(v+(B[i]-v)*t)).join(',')+')';}
+
+// ---- build S1 numbers ----
+const words=['-¥38.50','-¥12.00','外卖 -¥26','打车 -¥43','奶茶 -¥18','会员 -¥25','-¥299','-¥7.50','话费 -¥50','网购 -¥168','咖啡 -¥32','-¥64.80','房租 -¥2,400','零食 -¥15','电影 -¥45','-¥9.90','健身 -¥199','-¥23.40'];
+const R=rng(7),nums=[];
+for(let i=0;i<40;i++){
+  const e=document.createElement('div');e.className='num';e.textContent=words[i%words.length];
+  e.style.fontSize=(24+R()*44).toFixed(0)+'px';e.style.left=(-60+R()*1900).toFixed(0)+'px';
+  if(R()<0.18)e.style.color='#FF5A36';
+  $('nums').appendChild(e);
+  nums.push({e,y0:-260+R()*1200,v:50+R()*110,a:0.08+R()*0.16,ph:R()*700});
+}
+
+// ---- build phone UI ----
+const cats=[['餐饮','#FF5A36'],['交通','#3D7BFF'],['购物','#F5B700'],['娱乐','#A86BFF'],['居住','#1C1B19'],['医疗','#2FBF71'],['学习','#00A3B4'],['其他','#9A9488']];
+const chipEls=[];
+cats.forEach((c,i)=>{const e=document.createElement('div');e.className='chip';e.style.left=(26+(i%4)*92)+'px';e.style.top=(290+((i/4)|0)*100)+'px';
+  e.innerHTML='<i style="background:'+c[1]+'"></i>'+c[0];$('chips').appendChild(e);chipEls.push(e);});
+const layout=[['1','2','3','今天'],['4','5','6','⌫'],['7','8','9',null],['.','0','00',null]];
+const keyEls={};
+layout.forEach((row,r)=>row.forEach((k,c)=>{if(k==null)return;const e=document.createElement('div');e.className='key'+(k==='今天'?' sm':'');e.textContent=k;
+  e.style.left=(26+c*92)+'px';e.style.top=(540+r*76)+'px';$('keys').appendChild(e);keyEls[k]=e;}));
+(function(){const e=document.createElement('div');e.className='key';e.id='save';e.textContent='保存';e.style.left=(26+3*92)+'px';e.style.top=(540+2*76)+'px';$('keys').appendChild(e);keyEls.save=e;})();
+const taps=[{at:3500,x:67,y:335,el:chipEls[0]},{at:3950,x:251,y:573,el:keyEls['3']},{at:4300,x:159,y:573,el:keyEls['2']},{at:4800,x:343,y:763,el:keyEls.save}];
+
+// ---- build donut ----
+const segs=[['餐饮',38,'#FF5A36'],['居住',24,'#1C1B19'],['交通',14,'#3D7BFF'],['购物',13,'#F5B700'],['其他',11,'#A9C9B4']];
+const C=2*Math.PI*230,GAP=6;
+const NS='http://www.w3.org/2000/svg';let acc=0;
+const segEls=segs.map(s=>{const c=document.createElementNS(NS,'circle');c.setAttribute('cx',300);c.setAttribute('cy',300);c.setAttribute('r',230);
+  c.setAttribute('fill','none');c.setAttribute('stroke',s[2]);c.setAttribute('stroke-width',64);c.setAttribute('transform','rotate(-90 300 300)');
+  $('dsvg').appendChild(c);const o={el:c,start:acc,len:s[1]/100*C-GAP};acc+=s[1]/100*C;return o;});
+const lgEls=segs.map(s=>{const e=document.createElement('div');e.className='li';e.innerHTML='<span class="sw" style="background:'+s[2]+'"></span>'+s[0]+'<span class="pc">'+s[1]+'%</span>';$('lg').appendChild(e);return e;});
+
+const scenes=['s1','s2','s3','s4','s5'].map($);
+
+function render(ms){
+  const t=Math.max(0,Math.min(15000,ms));
+  // background blobs
+  $('b1').style.transform='translate('+(50*Math.sin(t/2400))+'px,'+(40*Math.cos(t/3100))+'px)';
+  $('b2').style.transform='translate('+(40*Math.cos(t/2700))+'px,'+(-30*Math.sin(t/2200))+'px)';
+
+  // ===== S1 : 0 - 2650 =====
+  const x1=eio(P(t,2200,2650));
+  vis(scenes[0],t<2700);
+  if(t<2700){
+    nums.forEach(n=>{n.e.style.opacity=(n.a*P(t,n.ph,n.ph+600)*(1-x1)).toFixed(3);n.e.style.transform='translateY('+(n.y0+n.v*t/1000).toFixed(1)+'px)';});
+    [['h1a',100],['h1b',420]].forEach(([id,a])=>{const k=eo5(P(t,a,a+700));$(id).firstElementChild.style.transform='translateY('+((1-k)*180)+'px)';});
+    S($('hw'),1-x1,0,-110*x1,1);
+    const k=eo(P(t,1250,1800));S($('h1c'),k*(1-x1),0,(1-k)*30-110*x1,1);
+  }
+
+  // ===== S2 : 2400 - 6500 =====
+  const on2=t>2350&&t<6550;vis(scenes[1],on2);
+  if(on2){
+    const x2=eio(P(t,6100,6500));
+    S(scenes[1],1-x2,0,-50*x2,1);
+    rise($('t2'),t,2600);rise($('t2a'),t,2700);rise($('t2b'),t,2820);rise($('t2c'),t,3000);
+    const pk=P(t,2450,3250);S($('phone'),cl(pk*3),0,(1-eb(pk))*1000,1,(1-eo(pk))*10);
+    // chips
+    const sel=t>=3500;
+    chipEls.forEach((e,i)=>{let s=1;if(i===0){const q=P(t,3500,3720);s=1-0.1*Math.sin(Math.PI*q);}
+      e.style.transform='scale('+s+')';
+      if(i===0){e.style.background=sel?'#FFE6DD':'#F1EBE1';e.style.borderColor=sel?'#FF5A36':'transparent';e.style.color=sel?'#FF5A36':'#4A463F';}});
+    // keys press
+    for(const k in keyEls){keyEls[k].style.transform='scale(1)';keyEls[k].style.filter='none';}
+    taps.slice(1).forEach(tp=>{const q=P(t,tp.at,tp.at+220);if(q>0&&q<1){tp.el.style.transform='scale('+(1-0.09*Math.sin(Math.PI*q))+')';tp.el.style.filter='brightness(0.9)';}});
+    // amount
+    let txt='0',at=0,gray=true;
+    if(t>=3950&&t<4300){txt='3';at=3950;gray=false;}
+    else if(t>=4300&&t<4900){txt='32';at=4300;gray=false;}
+    else if(t>=4900){txt='0';at=4900;}
+    const amt=$('amt');amt.textContent=txt;amt.style.color=gray?'#C9C2B6':'#1C1B19';
+    const pop=at?1+0.1*(1-eo(P(t,at,at+260))):1;$('amtWrap').style.transform='scale('+pop+')';
+    const nk=eo(P(t,3600,3900));const noteOut=P(t,4900,5100);S($('note'),nk*(1-noteOut),(1-nk)*-20,0,1);
+    // ripple
+    let rp=null;for(const tp of taps){if(t>=tp.at&&t<tp.at+480)rp=tp;}
+    const rip=$('rip');
+    if(rp){const q=P(t,rp.at,rp.at+480);rip.style.left=rp.x+'px';rip.style.top=rp.y+'px';rip.style.opacity=(1-q).toFixed(3);rip.style.transform='scale('+(0.3+eo(q)*1.1)+')';}
+    else rip.style.opacity=0;
+    // toast
+    const tk=P(t,4950,5400);S($('toast'),cl(tk*2),0,(1-eb(tk))*-140,1);
+  }
+
+  // ===== S3 : 6450 - 10300 =====
+  const on3=t>6400&&t<10350;vis(scenes[2],on3);
+  if(on3){
+    const x3=eio(P(t,9900,10300));
+    S(scenes[2],1-x3,0,-50*x3,1);
+    rise($('t3'),t,6550);rise($('t3a'),t,6650);rise($('t3b'),t,6770);rise($('t3c'),t,6950);
+    const dk=eo(P(t,6550,7250));S($('donut'),dk,0,0,0.82+0.18*dk,(1-dk)*-30);
+    const f=eio(P(t,6900,8400));
+    const pop=Math.sin(Math.PI*P(t,8600,9500));
+    segEls.forEach((s,i)=>{const v=cl((f*C-s.start)/s.len)*s.len;s.el.setAttribute('stroke-dasharray',v.toFixed(2)+' '+C.toFixed(2));
+      s.el.setAttribute('stroke-dashoffset',(-s.start).toFixed(2));s.el.setAttribute('stroke-width',i===0?64+18*Math.min(1,pop*1.6):64);});
+    $('cnt').textContent='¥'+Math.round(4286*eo(P(t,6900,8400))).toLocaleString('en-US');
+    lgEls.forEach((e,i)=>{const k=eo(P(t,7500+i*110,8100+i*110));S(e,k,(1-k)*40,0,1);});
+    const ck=P(t,8650,9100);S($('co'),eo(ck),0,(1-eo(ck))*20,0.6+0.4*eb(ck));
+  }
+
+  // ===== S4 : 10150 - 13200 =====
+  const on4=t>10100&&t<13250;vis(scenes[3],on4);
+  if(on4){
+    S(scenes[3],1,0,0,1);
+    rise($('t4'),t,10200);rise($('t4a'),t,10300);rise($('t4b'),t,10420);rise($('t4c'),t,10600);
+    const ck=eo(P(t,10250,10900));S($('card'),ck,0,(1-ck)*80,1);
+    const bf=eio(P(t,10650,11600));const pct=0.857*bf;
+    const bfill=$('bfill');bfill.style.width=(pct*100).toFixed(2)+'%';
+    bfill.style.background=mix('#2FBF71','#FF5A36',P(pct,0.5,0.85));
+    $('bpct').textContent='已用 '+Math.round(pct*100)+'%';
+    [[1.0,0],[0.75,1],[0.62,2]].forEach(([w,i])=>{const k=eio(P(t,10850+i*150,11650+i*150));$('r'+i).querySelector('.mf').style.width=(w*k*100).toFixed(2)+'%';
+      const rk=eo(P(t,10750+i*120,11300+i*120));S($('r'+i),rk,0,(1-rk)*20,1);});
+    const nk=P(t,11500,11950);let shake=0;if(t>11950&&t<12450){shake=Math.sin((t-11950)/500*Math.PI*6)*6*(1-(t-11950)/500);}
+    S($('nt'),cl(nk*2),0,(1-eb(nk))*-120,1,shake*0.5);
+  }
+
+  // ===== S5 : 12450 - 15000 =====
+  const on5=t>12450;vis(scenes[4],on5);
+  if(on5){
+    const w=eio(P(t,12450,13150));scenes[4].style.clipPath='circle('+(w*1150).toFixed(1)+'px at 50% 50%)';
+    const lk=P(t,12900,13450);S($('logo'),cl(lk*2),0,0,0.5+0.5*eb(lk),(1-eo(lk))*-20);
+    $('lbar').setAttribute('width',(92*eo(P(t,13150,13650))).toFixed(2));
+    const dk=eb(P(t,13450,13800));$('ldot').setAttribute('r',(12*Math.max(0,dk)).toFixed(2));
+    const drift=1+0.02*P(t,13600,15000);
+    const nk=eo(P(t,13150,13750));S($('name'),nk,0,(1-nk)*50,drift);
+    const sk=eo(P(t,13450,14000));S($('slog'),sk,0,(1-sk)*36,drift);
+    const fk=eo(P(t,13750,14300));S($('foot'),fk,0,(1-fk)*24,1);
+  }
+}
+
+let manual=false;const t0=performance.now();
+function loop(now){if(!manual)render((now-t0)%15000);requestAnimationFrame(loop);}
+window.__seek=function(ms){manual=true;render(ms);};
+render(0);requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

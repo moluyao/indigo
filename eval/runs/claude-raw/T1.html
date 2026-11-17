@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>暮山 · 手机壁纸 1080×2340</title>
+<meta name="viewport" content="width=1080">
+<style>
+html,body{margin:0;padding:0;background:#000}
+canvas{display:block;width:1080px;height:2340px}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="2340"></canvas>
+<script>
+(function(){
+const W=1080,H=2340;
+const c=document.getElementById('c'),g=c.getContext('2d');
+
+function rng(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const R=rng(20261030);
+function hex(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+function mixRGB(a,b,t){const A=hex(a),B=hex(b);return[A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t,A[2]+(B[2]-A[2])*t];}
+function rgba(c,a){return'rgba('+Math.round(c[0])+','+Math.round(c[1])+','+Math.round(c[2])+','+a+')';}
+
+// 1D value noise
+const PERM=[];for(let i=0;i<512;i++)PERM.push(R());
+function n1(x){const i=Math.floor(x),f=x-i,u=f*f*(3-2*f);const a=PERM[((i%512)+512)%512],b=PERM[(((i+1)%512)+512)%512];return a+(b-a)*u;}
+function fbm(x,oct,ridged){let s=0,amp=0.5,fr=1,norm=0;for(let o=0;o<oct;o++){let v=n1(x*fr+o*17.3);if(ridged)v=1-Math.abs(2*v-1);s+=v*amp;norm+=amp;amp*=0.5;fr*=2.07;}return s/norm;}
+
+// ---------- sky ----------
+const sky=g.createLinearGradient(0,0,0,H);
+sky.addColorStop(0.00,'#080C26');
+sky.addColorStop(0.20,'#141C4A');
+sky.addColorStop(0.38,'#33316B');
+sky.addColorStop(0.50,'#6D4A80');
+sky.addColorStop(0.58,'#B5677F');
+sky.addColorStop(0.64,'#E8907F');
+sky.addColorStop(0.70,'#F7BC95');
+sky.addColorStop(1.00,'#F9CFA6');
+g.fillStyle=sky;g.fillRect(0,0,W,H);
+
+// faint high clouds (long streaks)
+for(let k=0;k<7;k++){
+  const y=1050+k*70+R()*40, x=-200+R()*700, w=700+R()*700, h=10+R()*18;
+  const cg=g.createLinearGradient(x,0,x+w,0);
+  const col=mixRGB('#F2A08C','#FFD3B0',R());
+  cg.addColorStop(0,rgba(col,0));cg.addColorStop(0.5,rgba(col,0.18+R()*0.12));cg.addColorStop(1,rgba(col,0));
+  g.fillStyle=cg;
+  g.beginPath();g.ellipse(x+w/2,y,w/2,h,0,0,Math.PI*2);g.fill();
+}
+
+// ---------- stars ----------
+for(let i=0;i<520;i++){
+  const y=Math.pow(R(),1.7)*H*0.56;
+  const x=R()*W;
+  const fade=Math.max(0,1-y/(H*0.56));
+  const a=(0.25+R()*0.75)*fade*fade;
+  const r=0.6+Math.pow(R(),3)*2.0;
+  g.fillStyle='rgba(255,246,236,'+a.toFixed(3)+')';
+  g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();
+}
+// a few brighter stars with soft glow
+for(let i=0;i<9;i++){
+  const x=60+R()*(W-120), y=120+Math.pow(R(),1.3)*900, r=2+R()*1.6;
+  const gl=g.createRadialGradient(x,y,0,x,y,r*9);
+  gl.addColorStop(0,'rgba(255,240,225,0.55)');gl.addColorStop(1,'rgba(255,240,225,0)');
+  g.fillStyle=gl;g.beginPath();g.arc(x,y,r*9,0,Math.PI*2);g.fill();
+  g.fillStyle='rgba(255,250,244,0.95)';g.beginPath();g.arc(x,y,r*0.7,0,Math.PI*2);g.fill();
+}
+
+// ---------- moon ----------
+const MX=716,MY=1318,MR=128;
+let halo=g.createRadialGradient(MX,MY,MR*0.8,MX,MY,MR*6.2);
+halo.addColorStop(0,'rgba(255,214,182,0.55)');
+halo.addColorStop(0.25,'rgba(255,190,160,0.20)');
+halo.addColorStop(1,'rgba(255,180,150,0)');
+g.fillStyle=halo;g.beginPath();g.arc(MX,MY,MR*6.2,0,Math.PI*2);g.fill();
+const md=g.createRadialGradient(MX-40,MY-46,10,MX,MY,MR);
+md.addColorStop(0,'#FFF6EA');md.addColorStop(0.7,'#FFE2C6');md.addColorStop(1,'#FCCDA8');
+g.fillStyle=md;g.beginPath();g.arc(MX,MY,MR,0,Math.PI*2);g.fill();
+// subtle maria
+g.save();g.beginPath();g.arc(MX,MY,MR,0,Math.PI*2);g.clip();
+for(let i=0;i<9;i++){
+  const a=R()*Math.PI*2,d=R()*MR*0.75,r=10+R()*34;
+  g.fillStyle='rgba(214,150,120,'+(0.05+R()*0.07).toFixed(3)+')';
+  g.beginPath();g.arc(MX+Math.cos(a)*d,MY+Math.sin(a)*d,r,0,Math.PI*2);g.fill();
+}
+g.restore();
+
+// ---------- birds ----------
+function bird(x,y,s){
+  g.strokeStyle='rgba(42,30,66,0.75)';g.lineWidth=2.4*s/10;g.lineCap='round';
+  g.beginPath();g.moveTo(x-s,y-s*0.35);g.quadraticCurveTo(x-s*0.45,y-s*0.55,x,y);
+  g.quadraticCurveTo(x+s*0.45,y-s*0.55,x+s,y-s*0.35);g.stroke();
+}
+bird(470,1205,15);bird(512,1182,10);bird(438,1172,8);
+
+// ---------- mountain layers ----------
+const L=7;
+const bases=[1500,1585,1690,1815,1960,2125,2300];
+const amps=[110,150,190,230,270,300,320];
+const freqs=[0.0062,0.0050,0.0041,0.0034,0.0029,0.0025,0.0022];
+const fogCol=hex('#F6B596');
+for(let k=0;k<L;k++){
+  const t=k/(L-1);
+  const col=mixRGB('#C9798C','#120F28',Math.pow(t,0.75));
+  const top=bases[k]-amps[k];
+  const pts=[];
+  for(let x=-4;x<=W+4;x+=3){
+    const v=0.62*fbm(x*freqs[k]+k*41.7,6,k<3)+0.38*fbm(x*freqs[k]*0.35+k*9.1,3,false);
+    pts.push([x,bases[k]-amps[k]*v]);
+  }
+  const fill=g.createLinearGradient(0,top,0,bases[k]+340);
+  const lit=[col[0]+(fogCol[0]-col[0])*0.22*(1-t),col[1]+(fogCol[1]-col[1])*0.22*(1-t),col[2]+(fogCol[2]-col[2])*0.22*(1-t)];
+  fill.addColorStop(0,rgba(lit,1));fill.addColorStop(1,rgba(col.map(v=>v*0.82),1));
+  g.fillStyle=fill;
+  g.beginPath();g.moveTo(-4,H);
+  for(const p of pts)g.lineTo(p[0],p[1]);
+  g.lineTo(W+4,H);g.closePath();g.fill();
+
+  // rim light from the moon on far ridges
+  if(k<3){
+    g.save();g.globalCompositeOperation='lighter';
+    g.strokeStyle='rgba(255,190,160,'+(0.10-k*0.03)+')';g.lineWidth=2;
+    g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.stroke();g.restore();
+  }
+  // valley fog
+  if(k<L-1){
+    const fy=bases[k];
+    const fg=g.createLinearGradient(0,fy-amps[k]*0.55,0,fy+200);
+    const fa=0.62*(1-t)+0.08;
+    fg.addColorStop(0,rgba(fogCol,0));
+    fg.addColorStop(0.62,rgba(fogCol,fa));
+    fg.addColorStop(1,rgba(fogCol,0));
+    g.fillStyle=fg;g.fillRect(0,fy-amps[k]*0.55,W,amps[k]*0.55+200);
+  }
+}
+
+// ---------- tiny cabin light on the nearest ridge ----------
+(function(){
+  const x=268,k=L-2;
+  const v=0.62*fbm(x*freqs[k]+k*41.7,6,false)+0.38*fbm(x*freqs[k]*0.35+k*9.1,3,false);
+  const y=bases[k]-amps[k]*v+26;
+  const gl=g.createRadialGradient(x,y,0,x,y,34);
+  gl.addColorStop(0,'rgba(255,200,130,0.7)');gl.addColorStop(1,'rgba(255,200,130,0)');
+  g.fillStyle=gl;g.beginPath();g.arc(x,y,34,0,Math.PI*2);g.fill();
+  g.fillStyle='#FFD89A';g.fillRect(x-2.5,y-2.5,5,5);
+})();
+
+// ---------- vignette ----------
+const vg=g.createRadialGradient(W/2,H*0.55,H*0.25,W/2,H*0.55,H*0.78);
+vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(6,4,20,0.42)');
+g.fillStyle=vg;g.fillRect(0,0,W,H);
+
+// ---------- film grain ----------
+const img=g.getImageData(0,0,W,H),d=img.data;
+const GR=rng(99);
+for(let i=0;i<d.length;i+=4){
+  const n=(GR()-0.5)*11;
+  d[i]+=n;d[i+1]+=n;d[i+2]+=n;
+}
+g.putImageData(img,0,0);
+})();
+</script>
+</body>
+</html>

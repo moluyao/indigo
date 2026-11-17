@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>走马灯 · 10 秒循环</title>
+<style>
+  html,body{margin:0;height:100%;background:#120d0a;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center}
+  canvas{display:block;width:min(100vw,177.78vh);height:auto}
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function(){
+  const W=1920, H=1080, LOOP=10000, TAU=Math.PI*2;
+  const cx=960, R=470, TOP=158, BOT=932, SH=BOT-TOP;
+  const FIG_Y=600, FIG_S=0.78;
+  const cvs=document.getElementById('c'), ctx=cvs.getContext('2d');
+
+  function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+  // ---------- 灯罩纸（静态）：圆柱侧面越靠边越暗，烛火高度最亮，背光下可见纸纤维 ----------
+  const shade=document.createElement('canvas'); shade.width=2*R; shade.height=SH;
+  (function(){
+    const s=shade.getContext('2d'), img=s.createImageData(2*R,SH), d=img.data;
+    for(let y=0;y<SH;y++){
+      const yy=y/SH, v=0.60+0.40*Math.exp(-Math.pow((yy-0.71)/0.42,2));
+      for(let x=0;x<2*R;x++){
+        const u=(x+0.5-R)/R, side=0.40+0.60*Math.sqrt(Math.max(0,1-u*u));
+        const b=side*v, i=(y*2*R+x)*4;
+        d[i]=Math.min(255,262*b); d[i+1]=212*Math.pow(b,1.12); d[i+2]=140*Math.pow(b,1.35); d[i+3]=255;
+      }
+    }
+    s.putImageData(img,0,0);
+    const r=rng(1117);
+    for(let n=0;n<1100;n++){
+      const x=r()*2*R, y=r()*SH, L=8+r()*36, a=r()*TAU, bend=(r()-0.5)*14;
+      s.beginPath(); s.moveTo(x,y);
+      s.quadraticCurveTo(x+Math.cos(a)*L/2+bend, y+Math.sin(a)*L/2-bend, x+Math.cos(a)*L, y+Math.sin(a)*L);
+      s.lineWidth=0.6+r()*0.9;
+      s.strokeStyle = n%3 ? 'rgba(120,64,24,0.07)' : 'rgba(255,238,200,0.08)';
+      s.stroke();
+    }
+  })();
+
+  // ---------- 剪纸马（局部坐标，朝 +x 跑，原点在马身中心） ----------
+  function limb(g,x0,y0,a1,a2,L1,L2,w1,w2){
+    const kx=x0+L1*Math.sin(a1), ky=y0+L1*Math.cos(a1);
+    const fx=kx+L2*Math.sin(a2), fy=ky+L2*Math.cos(a2);
+    g.lineWidth=w1; g.beginPath(); g.moveTo(x0,y0); g.lineTo(kx,ky); g.stroke();
+    g.lineWidth=w2; g.beginPath(); g.moveTo(kx,ky); g.lineTo(fx,fy); g.stroke();
+    g.beginPath(); g.arc(fx,fy,7,0,TAU); g.fill();
+  }
+  function horse(g,p,rider){
+    const q=TAU*p;
+    const bob=-8*Math.sin(q+0.5), pitch=0.07*Math.sin(q-0.6);
+    g.save(); g.translate(0,bob); g.rotate(pitch);
+    g.lineCap='round'; g.lineJoin='round';
+    // 腿：后左、后右、前左、前右依次着地（横向袭步）
+    const front=(ph,hx,hy)=>{const a=q+TAU*ph, up=0.62*Math.cos(a)+0.05, fold=Math.max(0,-Math.sin(a));
+      limb(g,hx,hy,up,up-1.45*fold,60,62,18,11);};
+    const rear=(ph,hx,hy)=>{const a=q+TAU*ph, up=0.55*Math.cos(a)-0.28, fold=Math.max(0,-Math.sin(a));
+      limb(g,hx,hy,up,up+0.4+0.9*fold,62,64,20,11);};
+    rear(0.00,-72,14); rear(0.08,-66,16); front(0.30,60,18); front(0.40,54,20);
+    // 身体
+    g.beginPath(); g.ellipse(0,0,98,36,0,0,TAU); g.fill();
+    g.beginPath(); g.ellipse(-62,-4,46,40,0,0,TAU); g.fill();
+    g.beginPath(); g.ellipse(58,-2,44,42,0,0,TAU); g.fill();
+    // 颈与头
+    g.beginPath(); g.moveTo(32,-26); g.quadraticCurveTo(70,-82,100,-120); g.lineTo(130,-108);
+    g.quadraticCurveTo(112,-58,92,16); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(96,-124); g.lineTo(116,-136); g.lineTo(168,-92);
+    g.quadraticCurveTo(178,-80,166,-72); g.lineTo(134,-82); g.lineTo(116,-92); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(104,-126); g.lineTo(99,-150); g.lineTo(116,-131); g.closePath(); g.fill();
+    // 鬃：被风向后吹
+    g.lineWidth=6;
+    for(let m=0;m<5;m++){
+      const t=m/4, bx=100-62*t, by=-122+92*t, fl=0.18*Math.sin(q*2+m);
+      g.beginPath(); g.moveTo(bx,by); g.quadraticCurveTo(bx-20,by-10+fl*30,bx-38,by+2+fl*40); g.stroke();
+    }
+    // 尾
+    const tw=0.18*Math.sin(q+1.2);
+    for(const [wd,off] of [[18,0],[12,8],[7,16]]){
+      g.lineWidth=wd; g.beginPath(); g.moveTo(-138,-14);
+      g.quadraticCurveTo(-180,-34+tw*60+off,-212,4+tw*80+off); g.stroke();
+    }
+    if(rider){
+      g.lineWidth=22; g.beginPath(); g.moveTo(-4,-40); g.lineTo(-16,-112); g.stroke();
+      g.beginPath(); g.arc(-12,-136,17,0,TAU); g.fill();
+      g.lineWidth=10; g.beginPath(); g.moveTo(-12,-100); g.lineTo(26,-76); g.lineTo(82,-96); g.stroke(); // 手执缰绳
+      g.beginPath(); g.moveTo(-8,-44); g.lineTo(18,-18); g.lineTo(6,14); g.stroke();
+      g.lineWidth=5; g.beginPath(); g.moveTo(-20,-110); g.lineTo(-58,-140+12*Math.sin(q*2)); g.stroke(); // 背后飘带
+    }
+    g.restore();
+  }
+
+  // ---------- 图层 ----------
+  const mk=()=>{const c=document.createElement('canvas'); c.width=W; c.height=H; return c;};
+  const backL=mk(), frontL=mk(), vaneL=mk();
+  const SIL='rgb(58,26,12)';
+  const N=6, TH0=-0.35;
+
+  function flicker(t){ const s=t/LOOP;
+    return 1+0.035*Math.sin(TAU*7*s+1)+0.025*Math.sin(TAU*13*s+2)+0.015*Math.sin(TAU*29*s+0.5); }
+  function flameX(t){ const s=t/LOOP; return 2.5*Math.sin(TAU*11*s)+1.5*Math.sin(TAU*17*s+1); }
+
+  function drawFigures(L,front,t){
+    const g=L.getContext('2d'); g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,W,H);
+    g.fillStyle=SIL; g.strokeStyle=SIL;
+    const rot=TAU*t/LOOP, fx=flameX(t);
+    for(let k=0;k<N;k++){
+      const th=TH0+rot+k*TAU/N, c=Math.cos(th);
+      if(front ? c<0.02 : c>-0.02) continue;
+      const x=cx+R*Math.sin(th)-fx*0.8;
+      const sx=(front?FIG_S:FIG_S*0.92)*c, sy=front?FIG_S:FIG_S*0.9;
+      const gp=((t/500)+k*0.17)%1;  // 每步 0.5 秒，10 秒正好 20 步
+      g.setTransform(sx,0,0,sy,x,front?FIG_Y:FIG_Y+6);
+      horse(g,gp,k===0);
+    }
+    g.setTransform(1,0,0,1,0,0);
+  }
+  function drawVane(t){
+    const g=vaneL.getContext('2d'); g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,W,H);
+    const rot=TAU*t/LOOP;
+    for(let j=0;j<8;j++){
+      const ps=rot+j*TAU/8+0.2, c=Math.cos(ps); if(c<0.05) continue;
+      const x=cx+R*0.96*Math.sin(ps), hw=36*c;
+      const gr=g.createLinearGradient(0,TOP,0,TOP+190);
+      gr.addColorStop(0,'rgba(58,26,12,1)'); gr.addColorStop(1,'rgba(58,26,12,0)');
+      g.fillStyle=gr; g.beginPath();
+      g.moveTo(x-hw,TOP); g.lineTo(x+hw,TOP); g.lineTo(x+hw-70*c,TOP+190); g.lineTo(x-hw-70*c,TOP+190); g.closePath(); g.fill();
+    }
+  }
+
+  // ---------- 一帧 ----------
+  function render(ms){
+    const t=((ms%LOOP)+LOOP)%LOOP, f=flicker(t), fx=flameX(t);
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=1; ctx.filter='none';
+    // 墙：只被灯照亮
+    ctx.fillStyle='rgb(22,15,11)'; ctx.fillRect(0,0,W,H);
+    const sp=ctx.createRadialGradient(cx,560,200,cx,560,1150);
+    sp.addColorStop(0,`rgba(255,160,80,${0.15*f})`); sp.addColorStop(1,'rgba(255,160,80,0)');
+    ctx.fillStyle=sp; ctx.fillRect(0,0,W,H);
+
+    // 灯罩
+    ctx.drawImage(shade,cx-R,TOP);
+    ctx.save(); ctx.beginPath(); ctx.rect(cx-R,TOP,2*R,SH); ctx.clip();
+    ctx.globalCompositeOperation='multiply';
+    // 背面的影：隔着前面的纸看，淡、糊、反向走
+    drawFigures(backL,false,t);
+    ctx.globalAlpha=0.30; ctx.filter='blur(9px)'; ctx.drawImage(backL,0,0);
+    // 叶轮的影：离烛火更远，更散
+    drawVane(t);
+    ctx.globalAlpha=0.17; ctx.filter='blur(12px)'; ctx.drawImage(vaneL,0,0);
+    // 正面的影：清楚，有一点半影
+    drawFigures(frontL,true,t);
+    ctx.globalAlpha=0.84; ctx.filter='blur(1.6px)'; ctx.drawImage(frontL,0,0);
+    ctx.filter='none'; ctx.globalAlpha=1; ctx.globalCompositeOperation='source-over';
+    // 烛火随呼吸明暗
+    const k=Math.max(0,Math.min(0.25,0.10-(f-1)*1.6));
+    ctx.fillStyle=`rgba(28,10,0,${k})`; ctx.fillRect(cx-R,TOP,2*R,SH);
+    // 透过纸看到的火芯：全片唯一发光体
+    ctx.globalCompositeOperation='screen';
+    const fl=ctx.createRadialGradient(cx+fx,742,0,cx+fx,742,150);
+    fl.addColorStop(0,`rgba(255,236,190,${0.42*f})`); fl.addColorStop(1,'rgba(255,236,190,0)');
+    ctx.fillStyle=fl; ctx.fillRect(cx-R,TOP,2*R,SH);
+    ctx.restore();
+    ctx.globalCompositeOperation='source-over';
+
+    // 外骨架竹条（在纸外，静止）
+    ctx.strokeStyle='rgba(42,18,8,0.72)';
+    for(let i=-3;i<3;i++){
+      const ph=(i+0.5)*Math.PI/6, x=cx+R*Math.sin(ph);
+      ctx.lineWidth=6*Math.cos(ph)+1.5; ctx.beginPath(); ctx.moveTo(x,TOP); ctx.lineTo(x,BOT); ctx.stroke();
+    }
+    // 吊绳
+    ctx.fillStyle='rgb(40,24,16)'; ctx.fillRect(cx-2,0,4,118);
+    // 上下漆框
+    ctx.fillStyle='rgb(66,22,14)';
+    ctx.fillRect(cx-R-22,116,2*R+44,42); ctx.fillRect(cx-R-22,BOT,2*R+44,44);
+    ctx.fillStyle='rgba(120,48,28,1)'; ctx.fillRect(cx-R-22,116,2*R+44,3);
+    ctx.fillStyle=`rgba(255,170,90,${0.38*f})`; ctx.fillRect(cx-R-22,BOT,2*R+44,3); // 灯里漏出的一线光
+    // 流苏
+    const sw=0.03*Math.sin(TAU*2*t/LOOP);
+    ctx.save(); ctx.translate(cx,BOT+44); ctx.rotate(sw);
+    ctx.fillStyle='rgb(92,26,20)'; ctx.fillRect(-3,0,6,18);
+    ctx.beginPath(); ctx.arc(0,28,12,0,TAU); ctx.fill();
+    ctx.strokeStyle='rgb(104,30,22)'; ctx.lineWidth=3;
+    for(let s=-4;s<=4;s++){ ctx.beginPath(); ctx.moveTo(s*2,38); ctx.lineTo(s*5.5,170); ctx.stroke(); }
+    ctx.fillRect(-14,48,28,8);
+    ctx.restore();
+  }
+
+  // ---------- 播放与 __seek ----------
+  let playing=true; const t0=performance.now();
+  function loop(now){ if(playing) render(now-t0); requestAnimationFrame(loop); }
+  window.__seek=function(ms){ playing=false; render(ms); };
+  render(0);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

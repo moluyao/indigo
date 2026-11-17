@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>T3 · 小票变成一行</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #d6ddd3; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; }
+  canvas { display: block; width: 100vw; height: 56.25vw; max-height: 100vh; max-width: 177.78vh; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function () {
+  var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  var W = 1920, H = 1080, T = 15000;
+
+  // 颜色：账页、蓝横线、红竖线、墨；热敏纸、热敏印字
+  var BG = '#e7ede4', BLUE = '#7f9cc3', RED = '#c8473d', INK = '#1f2633', HEAD = '#5a615c';
+  var PAPER = '#fbfbf7', PRINT = '#2b2b2b', PGREY = '#6e6e6e';
+  var SANS = '"Microsoft YaHei","PingFang SC","Noto Sans CJK SC",sans-serif';
+  var SONG = '"SimSun","Songti SC","STSong",serif';
+  var MONO = '"Consolas","Menlo","Courier New",monospace';
+
+  // 示例消费（演示内容，非产品数据）
+  var items = [
+    { shop: '早餐铺', item: '包子 豆浆', time: '07:42', amt: 9.00 },
+    { shop: '地铁',   item: '单程票',   time: '08:15', amt: 4.00 },
+    { shop: '咖啡店', item: '拿铁 中杯', time: '10:30', amt: 22.00 },
+    { shop: '快餐店', item: '午饭套餐', time: '12:20', amt: 32.00 },
+    { shop: '打印店', item: '文件打印', time: '14:05', amt: 6.50 },
+    { shop: '奶茶店', item: '奶茶 少糖', time: '15:40', amt: 16.00 },
+    { shop: '超市',   item: '日用品',   time: '18:50', amt: 58.30 },
+    { shop: '出租车', item: '打车回家', time: '21:10', amt: 27.00 }
+  ];
+  var totalCents = items.reduce(function (s, it) { return s + Math.round(it.amt * 100); }, 0);
+  var TOTAL = '¥' + (totalCents / 100).toFixed(2);
+  function money(a) { return '¥' + a.toFixed(2); }
+
+  // 时间表（ms）
+  var LAND = [0, 2200, 3700, 4850, 5750, 6450, 7010, 7460];  // 落定时刻，间隔逐次缩短
+  var FALL = 460;
+  var FLY0 = 8200, STAG = 150, FLYD = 900;                    // 折叠成行
+  var SUM0 = 10350, SUMD = 300;                               // 合计上单线
+  var TOT0 = 10700, TOTD = 450;                               // 合计金额
+  var DBL0 = 11000, DBLD = 400;                               // 合计下双线
+  var SL1 = 12000, SL2 = 12250, SLD = 500;                    // 标语两行
+
+  // 固定种子
+  function rng(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  var rnd = rng(15);
+  var pose = items.map(function () {
+    return { x: 1540 + (rnd() * 2 - 1) * 90, y: 545 + (rnd() * 2 - 1) * 150, r: (rnd() * 2 - 1) * 0.16 };
+  });
+
+  // 缓动
+  function bez(x1, y1, x2, y2) {
+    return function (x) {
+      if (x <= 0) return 0;
+      if (x >= 1) return 1;
+      var lo = 0, hi = 1, t;
+      for (var i = 0; i < 28; i++) {
+        t = (lo + hi) / 2;
+        var cx = 3 * (1 - t) * (1 - t) * t * x1 + 3 * (1 - t) * t * t * x2 + t * t * t;
+        if (cx < x) lo = t; else hi = t;
+      }
+      t = (lo + hi) / 2;
+      return 3 * (1 - t) * (1 - t) * t * y1 + 3 * (1 - t) * t * t * y2 + t * t * t;
+    };
+  }
+  var sink = bez(0.53, 0, 0.67, 1);      // 沉入：落下
+  var dock = bez(0.31, 0.69, 0.64, 1);   // 停靠：到达
+  function carry(u) { u = cl(u); return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; } // 搬运
+  function cl(u) { return u < 0 ? 0 : u > 1 ? 1 : u; }
+  function lerp(a, b, e) { return a + (b - a) * e; }
+
+  // 账页几何
+  var ROW0 = 250, ROWP = 76;
+  function rowY(i) { return ROW0 + ROWP * i; }
+  var X_TIME = 270, X_SHOP = 470, X_AMT = 1180, TOT_Y = 880;
+
+  function drawLedger() {
+    ctx.fillStyle = BG;
+    ctx.fillRect(0, 0, W, H);
+    // 蓝横线
+    ctx.strokeStyle = BLUE;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (var i = 0; i <= 8; i++) {
+      var y = ROW0 - ROWP / 2 + ROWP * i;
+      ctx.moveTo(230, y); ctx.lineTo(1210, y);
+    }
+    ctx.stroke();
+    // 红竖线（左侧双线）
+    ctx.strokeStyle = RED;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    [222, 230, 440, 940, 1210].forEach(function (x) { ctx.moveTo(x, 150); ctx.lineTo(x, 950); });
+    ctx.stroke();
+    // 表头
+    ctx.fillStyle = HEAD;
+    ctx.font = '28px ' + SANS;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.fillText('时间', X_TIME, 186);
+    ctx.fillText('去处', X_SHOP, 186);
+    ctx.textAlign = 'right';
+    ctx.fillText('金额', X_AMT, 186);
+    // 问题句
+    ctx.fillStyle = INK;
+    ctx.font = 'bold 72px ' + SANS;
+    ctx.textAlign = 'left';
+    ctx.fillText('今天花了多少？', 230, 92);
+  }
+
+  function rot(px, py, r, lx, ly) {
+    var c = Math.cos(r), s = Math.sin(r);
+    return [px + lx * c - ly * s, py + lx * s + ly * c];
+  }
+
+  // 一张小票：纸 + 次要文字（局部坐标）
+  function drawPaper(cx, cy, r, w, h, alpha, minorA, it) {
+    if (alpha <= 0.001) return;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(r);
+    ctx.globalAlpha = alpha;
+    ctx.shadowColor = 'rgba(30,45,30,0.18)';
+    ctx.shadowBlur = 14;
+    ctx.shadowOffsetY = 4;
+    ctx.fillStyle = PAPER;
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, -h / 2);
+    ctx.lineTo(w / 2, -h / 2);
+    var n = Math.max(2, Math.round(w / 14));
+    if (n % 2) n++;
+    ctx.lineTo(w / 2, h / 2 - 6);
+    for (var j = n - 1; j >= 0; j--) {          // 撕纸口锯齿
+      ctx.lineTo(-w / 2 + w * j / n, h / 2 - (j % 2 === 0 ? 6 : 0));
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    if (minorA > 0.001) {
+      ctx.globalAlpha = alpha * minorA;
+      ctx.strokeStyle = PGREY;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.moveTo(-125, -118); ctx.lineTo(125, -118);
+      ctx.moveTo(-125, 18); ctx.lineTo(125, 18);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = PRINT;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'left';
+      ctx.font = '28px ' + SONG;
+      ctx.fillText(it.item, -125, -72);
+      ctx.fillText('合计', -125, 72);
+      ctx.fillStyle = PGREY;
+      ctx.textAlign = 'center';
+      ctx.font = '24px ' + SONG;
+      ctx.fillText('谢谢惠顾', 0, 150);
+    }
+    ctx.restore();
+  }
+
+  // 承接文字：店名、时间、金额——从小票飞进账页那一栏
+  function drawShared(it, px, py, r, e) {
+    var row = rowY(items.indexOf(it));
+    var late = e >= 0.5;
+    ctx.textBaseline = 'middle';
+
+    // 店名：小票居中 → 账页左对齐，以左缘为锚
+    ctx.font = 'bold 34px ' + SONG;
+    var ws = ctx.measureText(it.shop).width;
+    var a = rot(px, py, r, -ws / 2, -158);
+    var fsShop = lerp(34, 40, e);
+    ctx.save();
+    ctx.translate(lerp(a[0], X_SHOP, e), lerp(a[1], row, e));
+    ctx.rotate(r * (1 - e));
+    ctx.fillStyle = late ? INK : PRINT;
+    ctx.font = late ? (fsShop.toFixed(1) + 'px ' + SANS) : ('bold ' + fsShop.toFixed(1) + 'px ' + SONG);
+    ctx.textAlign = 'left';
+    ctx.fillText(it.shop, 0, 0);
+    ctx.restore();
+
+    // 时间
+    a = rot(px, py, r, -125, -30);
+    ctx.save();
+    ctx.translate(lerp(a[0], X_TIME, e), lerp(a[1], row, e));
+    ctx.rotate(r * (1 - e));
+    ctx.fillStyle = late ? INK : PRINT;
+    ctx.font = lerp(28, 36, e).toFixed(1) + 'px ' + MONO;
+    ctx.textAlign = 'left';
+    ctx.fillText(it.time, 0, 0);
+    ctx.restore();
+
+    // 金额（右对齐锚点）
+    a = rot(px, py, r, 125, 72);
+    ctx.save();
+    ctx.translate(lerp(a[0], X_AMT, e), lerp(a[1], row, e));
+    ctx.rotate(r * (1 - e));
+    ctx.fillStyle = late ? INK : PRINT;
+    ctx.font = 'bold 44px ' + MONO;
+    ctx.textAlign = 'right';
+    ctx.fillText(money(it.amt), 0, 0);
+    ctx.restore();
+  }
+
+  function receiptState(i, t) {
+    var p = pose[i];
+    if (t < LAND[i] - FALL) return null;
+    var u = cl((t - (LAND[i] - FALL)) / FALL), e = sink(u);
+    var st = {
+      x: lerp(p.x + 60, p.x, e),
+      y: lerp(-320, p.y, e),
+      r: lerp(p.r - 0.25, p.r, e),
+      fly: carry((t - (FLY0 + i * STAG)) / FLYD)
+    };
+    return st;
+  }
+
+  function drawReceipt(i, st) {
+    var it = items[i], e = st.fly, row = rowY(i);
+    var cx = lerp(st.x, 720, e), cy = lerp(st.y, row, e), r = st.r * (1 - e);
+    var w = lerp(300, 980, e), h = lerp(420, 64, e);
+    var paperA = e < 0.55 ? 1 : 1 - (e - 0.55) / 0.45;
+    var minorA = cl(1 - e / 0.3);
+    drawPaper(cx, cy, r, w, h, paperA, minorA, it);
+    drawShared(it, st.x, st.y, st.r, e);
+  }
+
+  function draw(t) {
+    drawLedger();
+    var states = items.map(function (_, i) { return receiptState(i, t); });
+    // 先画还在堆里的，再画正在飞/已落行的
+    for (var i = 0; i < items.length; i++) if (states[i] && states[i].fly <= 0) drawReceipt(i, states[i]);
+    for (i = 0; i < items.length; i++) if (states[i] && states[i].fly > 0) drawReceipt(i, states[i]);
+
+    // 合计上单线
+    var u = dock(cl((t - SUM0) / SUMD));
+    if (u > 0) {
+      ctx.strokeStyle = INK; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(950, 842); ctx.lineTo(950 + (X_AMT + 10 - 950) * u, 842); ctx.stroke();
+    }
+    // 合计
+    u = cl((t - TOT0) / TOTD);
+    if (u > 0) {
+      var e = dock(u);
+      ctx.save();
+      ctx.globalAlpha = cl(u * 2.5);
+      ctx.fillStyle = INK;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 44px ' + SANS;
+      ctx.fillText('合计', X_SHOP, TOT_Y - 24 * (1 - e));
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 64px ' + MONO;
+      ctx.fillText(TOTAL, X_AMT, TOT_Y - 24 * (1 - e));
+      ctx.restore();
+    }
+    // 合计下双线
+    u = dock(cl((t - DBL0) / DBLD));
+    if (u > 0) {
+      ctx.strokeStyle = INK; ctx.lineWidth = 3;
+      var x1 = 950 + (X_AMT + 10 - 950) * u;
+      ctx.beginPath();
+      ctx.moveTo(950, 920); ctx.lineTo(x1, 920);
+      ctx.moveTo(950, 929); ctx.lineTo(x1, 929);
+      ctx.stroke();
+    }
+    // 标语
+    [[SL1, '花出去的每一笔，', 470], [SL2, '都落成一行。', 560]].forEach(function (s) {
+      var v = cl((t - s[0]) / SLD);
+      if (v <= 0) return;
+      var ev = dock(v);
+      ctx.save();
+      ctx.globalAlpha = cl(v * 2.5);
+      ctx.fillStyle = INK;
+      ctx.font = 'bold 60px ' + SANS;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(s[1], 1300, s[2] + 30 * (1 - ev));
+      ctx.restore();
+    });
+  }
+
+  var paused = false, t0 = performance.now();
+  function loop(now) {
+    if (!paused) draw((now - t0) % T);
+    requestAnimationFrame(loop);
+  }
+  window.__seek = function (ms) {
+    paused = true;
+    draw(Math.max(0, Math.min(T, ms)));
+  };
+  draw(0);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

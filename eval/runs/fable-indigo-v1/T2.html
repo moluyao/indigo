@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>T2 · 逃跑的句号</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #dfe3da; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; }
+  canvas { display: block; width: 100vw; height: 56.25vw; max-height: 100vh; max-width: 177.78vh; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function () {
+  var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  var W = 1920, H = 1080, T = 10000;
+  // 稿纸：30 列 × 12 行，格 54，行距 72
+  var COLS = 30, ROWS = 12, CELL = 54, PITCH = 72, GX = 150, GY = 117;
+  var GW = COLS * CELL, GH = (ROWS - 1) * PITCH + CELL;
+  var PAPER = '#eef1ea', GRID = '#5d9b78', INK = '#1f2a47';
+  var FONT = '40px "KaiTi","STKaiti","Kaiti SC","楷体",serif';
+
+  var TEXT = '　　这一页本来写得好好的。每个字住在自己的格子里，逗号在句子中间歇一歇，顿号把并排的东西隔开，句号负责把话收住。写到最后，作者放下笔去倒水，末尾那个句号却没有待住。它先是轻轻晃了一下，像一枚被风吹动的纽扣，接着沿着最后一行往左滚，越滚越快。字们只好给它让路：有的往后挪一格，有的跳到下一行，还有几个干脆躲进它的圆圈里，在那一小块空地上站好。它撞到页边，弹了起来，从整页纸的正中间飞过去，一路掀起一阵字的浪。落地以后它又蹦了两下，才回到原来的位置。大家各回各的格子，好像什么都没有发生过。只有这一段话一直没能说完，因为它的结尾';
+  var chars = Array.from(TEXT);
+
+  // 句号：外半径、基准笔宽
+  var RO = 150, RW = 30, RI_BLOCK = RO - 36, PAD = 6;
+  var XR = 1610, YR = 813, XL = 300;   // 静止位置（右下）、左墙处
+  // 统一重力 g = 568 px/s²：大弧 480px/2.6s，弹跳 110px/1.245s，28px/0.628s
+  var B0 = 1200, B1 = 3600, C1 = 6200, D1 = 7445, D2 = 8075;
+
+  function pos(t) {
+    t = ((t % T) + T) % T;
+    var x = XR, y = YR, u;
+    if (t < 700) {
+      // 静
+    } else if (t < B0) {
+      u = (t - 700) / (B0 - 700);          // 晃一下
+      x = XR + Math.sin(u * Math.PI * 3) * (1 - u) * 7;
+    } else if (t < B1) {
+      u = (t - B0) / (B1 - B0);            // 沿最后一行往左滚，匀加速
+      x = XR - (XR - XL) * u * u;
+    } else if (t < C1) {
+      u = (t - B1) / (C1 - B1);            // 撞页边，大弧飞过页面中央
+      x = XL + (1500 - XL) * u;
+      y = YR - 4 * 480 * u * (1 - u);
+    } else if (t < D2) {
+      var v = (t - C1) / (D2 - C1);        // 两次递减弹跳，回到原位
+      x = 1500 + 110 * (1 - (1 - v) * (1 - v));
+      if (t < D1) { u = (t - C1) / (D1 - C1); y = YR - 4 * 110 * u * (1 - u); }
+      else { u = (t - D1) / (D2 - D1); y = YR - 4 * 28 * u * (1 - u); }
+    }
+    return { x: x, y: y, a: (x - XR) / RO };   // 滚动：转角 = 位移 / 半径
+  }
+
+  function isBlocked(cx, cy, r, c) {
+    var x0 = GX + c * CELL, y0 = GY + r * PITCH, x1 = x0 + CELL, y1 = y0 + CELL;
+    var nx = Math.max(x0, Math.min(cx, x1)), ny = Math.max(y0, Math.min(cy, y1));
+    var mind = Math.hypot(cx - nx, cy - ny);
+    var maxd = Math.max(Math.hypot(cx - x0, cy - y0), Math.hypot(cx - x1, cy - y0),
+                        Math.hypot(cx - x0, cy - y1), Math.hypot(cx - x1, cy - y1));
+    return mind <= RO + PAD && maxd >= RI_BLOCK - PAD;
+  }
+
+  // 按阅读顺序把字放进没被句号压住的格子
+  function layout(t) {
+    var p = pos(t), out = new Array(chars.length), k = 0;
+    for (var r = 0; r < ROWS && k < chars.length; r++) {
+      for (var c = 0; c < COLS && k < chars.length; c++) {
+        if (!isBlocked(p.x, p.y, r, c)) out[k++] = r * COLS + c;
+      }
+    }
+    for (; k < chars.length; k++) out[k] = -1;   // 溢出（按余量计算不会发生）
+    return out;
+  }
+
+  function drawGrid() {
+    ctx.fillStyle = PAPER;
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = GRID;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(GX - 14, GY - 14, GW + 28, GH + 28);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (var r = 0; r < ROWS; r++) {
+      var y = GY + r * PITCH;
+      ctx.rect(GX, y, GW, CELL);
+      for (var c = 1; c < COLS; c++) {
+        ctx.moveTo(GX + c * CELL, y);
+        ctx.lineTo(GX + c * CELL, y + CELL);
+      }
+    }
+    ctx.stroke();
+    ctx.fillStyle = GRID;
+    ctx.font = '22px "Microsoft YaHei","PingFang SC",sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('30×12＝360', GX + GW + 14, GY + GH + 54);
+  }
+
+  // 钢笔画的圆：笔宽不匀，所以看得出它在转
+  function drawRing(x, y, a) {
+    var N = 144, i, th, w;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(a);
+    ctx.beginPath();
+    for (i = 0; i <= N; i++) {
+      th = i / N * Math.PI * 2;
+      var ro = RO - 1.5 + 1.5 * Math.sin(th * 2 + 1.1);
+      if (i === 0) ctx.moveTo(Math.cos(th) * ro, Math.sin(th) * ro);
+      else ctx.lineTo(Math.cos(th) * ro, Math.sin(th) * ro);
+    }
+    ctx.closePath();
+    for (i = N; i >= 0; i--) {
+      th = i / N * Math.PI * 2;
+      w = RW * (0.78 + 0.30 * Math.sin(th + 0.6) + 0.08 * Math.sin(3 * th));
+      var ri = RO - w;
+      if (i === N) ctx.moveTo(Math.cos(th) * ri, Math.sin(th) * ri);
+      else ctx.lineTo(Math.cos(th) * ri, Math.sin(th) * ri);
+    }
+    ctx.closePath();
+    ctx.fillStyle = INK;
+    ctx.fill('evenodd');
+    ctx.restore();
+  }
+
+  var LAG = [0, 35, 70, 105, 140];
+  function draw(t) {
+    t = ((t % T) + T) % T;
+    drawGrid();
+    var Ls = LAG.map(function (d) { return layout(t - d); });
+    var L0 = Ls[0];
+    ctx.fillStyle = INK;
+    ctx.font = FONT;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (var i = 0; i < chars.length; i++) {
+      var ch = chars[i];
+      if (ch === '　' || L0[i] < 0) continue;
+      var r = Math.floor(L0[i] / COLS), sx = 0, n = 0;
+      // 同一行内的挪格取最近 140ms 的平均位置 → 滑过去；换行则瞬切
+      for (var s = 0; s < Ls.length; s++) {
+        var cell = Ls[s][i];
+        if (cell >= 0 && Math.floor(cell / COLS) === r) { sx += cell % COLS; n++; }
+      }
+      var cc = sx / n;
+      ctx.fillText(ch, GX + cc * CELL + CELL / 2, GY + r * PITCH + CELL / 2 + 1);
+    }
+    var p = pos(t);
+    drawRing(p.x, p.y, p.a);
+  }
+
+  var paused = false, t0 = performance.now();
+  function loop(now) {
+    if (!paused) draw(now - t0);
+    requestAnimationFrame(loop);
+  }
+  window.__seek = function (ms) { paused = true; draw(ms); };
+  draw(0);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

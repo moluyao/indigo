@@ -1,0 +1,5 @@
+.secrets/
+**/.secrets/
+__pycache__/
+*.pyc
+eval/.venv/

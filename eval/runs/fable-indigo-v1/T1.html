@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1080">
+<title>T1 · 剪纸灯箱壁纸</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #1c1e1a; }
+  svg { display: block; width: 1080px; height: 2340px; }
+</style>
+</head>
+<body>
+<svg id="w" xmlns="http://www.w3.org/2000/svg" width="1080" height="2340" viewBox="0 0 1080 2340"></svg>
+<script>
+(function () {
+  // 固定种子随机数
+  function rng(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  var R = rng(1117);
+  var f = function (n) { return n.toFixed(1); };
+
+  // 颜色：纸 / 背光 / 切口内壁 / 朱红衬纸（唯一强调）
+  var PAPER = '#1c1e1a', LIGHT = '#efd6a2', WALL = '#5e4527', VERMILION = '#d9472e', FIBER = '#9a6f35';
+  // 透光大孔（"月"）
+  var DX = 600, DY = 1500, DR = 270;
+
+  function q(p0, c, p1, t) {
+    var u = 1 - t;
+    return [u * u * p0[0] + 2 * u * t * c[0] + t * t * p1[0], u * u * p0[1] + 2 * u * t * c[1] + t * t * p1[1]];
+  }
+  function qd(p0, c, p1, t) {
+    var u = 1 - t;
+    return [2 * u * (c[0] - p0[0]) + 2 * t * (p1[0] - c[0]), 2 * u * (c[1] - p0[1]) + 2 * t * (p1[1] - c[1])];
+  }
+  // 沿二次曲线的变宽带状形 = 一道剪口
+  function ribbon(p0, c, p1, wf, n) {
+    var L = [], Rr = [];
+    for (var i = 0; i <= n; i++) {
+      var t = i / n, p = q(p0, c, p1, t), d = qd(p0, c, p1, t);
+      var m = Math.hypot(d[0], d[1]) || 1, nx = -d[1] / m, ny = d[0] / m, w = wf(t) / 2;
+      L.push([p[0] + nx * w, p[1] + ny * w]);
+      Rr.push([p[0] - nx * w, p[1] - ny * w]);
+    }
+    var pts = L.concat(Rr.reverse());
+    return 'M' + pts.map(function (p) { return f(p[0]) + ' ' + f(p[1]); }).join('L') + 'Z';
+  }
+
+  // 芦苇：[根部 x, 梢 y, 向右的风偏, 是否有花穗]
+  var stems = [
+    [300, 760, 150, 1],
+    [120, 1450, 90, 0],
+    [215, 1230, 110, 1],
+    [380, 1640, 80, 0],
+    [470, 990, 120, 1],
+    [560, 1330, 70, 0],
+    [690, 1090, 130, 1],
+    [800, 1540, 60, 0],
+    [905, 1260, 100, 1],
+    [985, 1720, 50, 0]
+  ];
+
+  var paths = [];
+  stems.forEach(function (s) {
+    var x0 = s[0], top = s[1], bend = s[2], plume = s[3];
+    var P0 = [x0, 2420], P1 = [x0 + bend, top], C = [x0 + bend * 0.12, (2420 + top) / 2];
+    // 茎：根部宽、梢部细
+    paths.push(ribbon(P0, C, P1, function (t) { return 10 * (1 - t) + 2.4; }, 48));
+    // 叶：大多顺风向右
+    var nl = 2 + Math.floor(R() * 3);
+    for (var k = 0; k < nl; k++) {
+      var t = 0.22 + R() * 0.5, S = q(P0, C, P1, t);
+      var side = R() < 0.7 ? 1 : -1;
+      var L = (side > 0 ? 220 : 160) + R() * 200, dr = R() * 0.55, wm = 14 + R() * 10;
+      var E = [S[0] + side * L * 0.9, S[1] - L * 0.55 + L * dr * 1.15];
+      var Cc = [S[0] + side * L * 0.3, S[1] - L * 0.7];
+      paths.push(ribbon(S, Cc, E, (function (wm) {
+        return function (u) { return wm * Math.sin(Math.PI * Math.pow(u, 0.6)); };
+      })(wm), 36));
+    }
+    // 花穗：梢头一簇下垂的细丝
+    if (plume) {
+      var n = 11 + Math.floor(R() * 6);
+      for (var j = 0; j < n; j++) {
+        var S2 = q(P0, C, P1, 1 - R() * 0.045);
+        var a = (-25 + R() * 105) * Math.PI / 180, len = 60 + R() * 95;
+        var E2 = [S2[0] + Math.cos(a) * len, S2[1] + Math.sin(a) * len];
+        var C2 = [S2[0] + Math.cos(a - 0.55) * len * 0.55, S2[1] + Math.sin(a - 0.55) * len * 0.55];
+        paths.push(ribbon(S2, C2, E2, function (u) { return 5.5 * Math.sin(Math.PI * Math.pow(u, 0.5)); }, 20));
+      }
+    }
+  });
+
+  // 背衬皮纸的纤维：只在透光处看得见
+  var fib = '';
+  for (var i = 0; i < 320; i++) {
+    var x = R() * 1080, y = R() * 2340, an = R() * Math.PI * 2, l = 18 + R() * 60;
+    var ex = x + Math.cos(an) * l, ey = y + Math.sin(an) * l;
+    var cx = x + Math.cos(an + 0.6) * l * 0.5, cy = y + Math.sin(an + 0.6) * l * 0.5;
+    fib += '<path d="M' + f(x) + ' ' + f(y) + 'Q' + f(cx) + ' ' + f(cy) + ' ' + f(ex) + ' ' + f(ey) + '"/>';
+  }
+
+  var reeds = '<g id="reeds">' + paths.map(function (d) { return '<path d="' + d + '"/>'; }).join('') + '</g>';
+  var circle = '<circle cx="' + DX + '" cy="' + DY + '" r="' + DR + '"';
+  // 孔的形状：圆外芦苇是缝（白），圆是大孔（白），圆内芦苇是纸桥（黑）——阴阳反转
+  var holeShape =
+    '<rect x="-20" y="-20" width="1120" height="2380" fill="#000"/>' +
+    '<use href="#reeds" fill="#fff"/>' +
+    circle + ' fill="#fff"/>' +
+    '<g clip-path="url(#disc)"><use href="#reeds" fill="#000"/></g>';
+
+  var svg = document.getElementById('w');
+  svg.innerHTML =
+    '<defs>' + reeds +
+      '<clipPath id="disc">' + circle + '/></clipPath>' +
+      '<mask id="m1" maskUnits="userSpaceOnUse" x="0" y="0" width="1080" height="2340">' + holeShape + '</mask>' +
+      // 视线略斜：同一孔向左上平移 3/4px，交集处看到背光，其余看到切口内壁
+      '<mask id="m2" maskUnits="userSpaceOnUse" x="0" y="0" width="1080" height="2340"><g transform="translate(-3 -4)">' + holeShape + '</g></mask>' +
+    '</defs>' +
+    '<rect width="1080" height="2340" fill="' + PAPER + '"/>' +
+    '<g mask="url(#m1)">' +
+      '<rect width="1080" height="2340" fill="' + WALL + '"/>' +
+      '<g mask="url(#m2)">' +
+        '<rect width="1080" height="2340" fill="' + LIGHT + '"/>' +
+        circle + ' fill="' + VERMILION + '"/>' +
+        '<g fill="none" stroke="' + FIBER + '" stroke-opacity="0.28" stroke-width="1.2">' + fib + '</g>' +
+      '</g>' +
+    '</g>';
+})();
+</script>
+</body>
+</html>

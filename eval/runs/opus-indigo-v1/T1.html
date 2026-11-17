@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>釉墙 · 手机壁纸 1080×2340</title>
+<style>
+  html,body{margin:0;height:100%;background:#0c0f0e}
+  body{display:flex;align-items:center;justify-content:center}
+  canvas{display:block;height:100vh;width:auto;max-width:100vw}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="2340"></canvas>
+<script>
+(function(){
+  const W = 1080, H = 2340;
+  const g = document.getElementById('c').getContext('2d');
+
+  // 固定种子：每次打开都是同一面墙
+  function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  const rand = rng(20261117);
+  const rr = (a,b)=>a+(b-a)*rand();
+
+  function oklch(L,C,h,a){
+    const hr=h*Math.PI/180, A=C*Math.cos(hr), B=C*Math.sin(hr);
+    const l_=L+0.3963377774*A+0.2158037573*B, m_=L-0.1055613458*A-0.0638541728*B, s_=L-0.0894841775*A-1.2914855480*B;
+    const l=l_*l_*l_, m=m_*m_*m_, s=s_*s_*s_;
+    const lin=[4.0767416621*l-3.3077115913*m+0.2309699292*s,-1.2684380046*l+2.6097574011*m-0.3413193965*s,-0.0041960863*l-0.7034186147*m+1.7076147010*s];
+    const c=lin.map(x=>{x=Math.max(0,Math.min(1,x));return Math.round(255*(x<=0.0031308?12.92*x:1.055*Math.pow(x,1/2.4)-0.055));});
+    return a===undefined?`rgb(${c[0]},${c[1]},${c[2]})`:`rgba(${c[0]},${c[1]},${c[2]},${a})`;
+  }
+
+  // 几何：八角星 + 周围八块镖形 + 八角之间的小方砖（4.8.8 镶嵌，星嵌在八角里）
+  const w  = W/7;                         // 八角形对边距，横向正好 7 个
+  const ri = w/2;                         // 八角内切半径 = 星尖半径
+  const Ro = ri/Math.cos(Math.PI/8);      // 八角顶点半径
+  const rin= ri*0.76537;                  // {8/2} 星的内凹点半径
+  const q  = w*(1-Math.tan(Math.PI/8))/2; // 小方砖（转 45°）的半对角
+  const D = Math.PI/4, O = Math.PI/8;
+  const pieces = [];
+  const P = (a,r,cx,cy)=>[cx+r*Math.cos(a), cy+r*Math.sin(a)];
+
+  for(let j=-9;j<=9;j++){
+    for(let i=0;i<=7;i++){
+      const cx=i*w, cy=H/2+j*w;               // 左右边缘正好切过星心，左右对称
+      if(cy<-w||cy>H+w) continue;
+      const star=[];
+      for(let k=0;k<8;k++){ star.push(P(k*D,ri,cx,cy)); star.push(P(k*D+O,rin,cx,cy)); }
+      pieces.push({t:'star',pts:star});
+      for(let k=0;k<8;k++){
+        pieces.push({t:'kite',pts:[P(k*D,ri,cx,cy),P(k*D+O,Ro,cx,cy),P((k+1)*D,ri,cx,cy),P(k*D+O,rin,cx,cy)]});
+      }
+      const sx=cx+w/2, sy=cy+w/2;
+      pieces.push({t:'sq',pts:[[sx+q,sy],[sx,sy+q],[sx-q,sy],[sx,sy-q]]});
+    }
+  }
+
+  // 手工切砖：每块的顶点各自偏一点点（小于灰缝半宽，被灰缝吃掉，只留下"不机械"的感觉）
+  // 釉色：每块各烧各的，明度和色相都有窑变
+  for(const p of pieces){
+    p.pts = p.pts.map(([x,y])=>[x+rr(-1.3,1.3), y+rr(-1.3,1.3)]);
+    if(p.t==='star') p.col = oklch(0.43+rr(-0.045,0.045), 0.085+rr(-0.015,0.015), 158+rr(-6,6));
+    else if(p.t==='kite') p.col = oklch(0.31+rr(-0.03,0.03), 0.05+rr(-0.01,0.01), 198+rr(-6,6));
+    else p.col = oklch(0.36+rr(-0.035,0.035), 0.11+rr(-0.015,0.015), 256+rr(-5,5));
+    let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    for(const [x,y] of p.pts){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);}
+    p.bb=[x0,y0,x1,y1];
+    // 每块砖面不平：倒影在每块上偏移不同、亮度不同
+    p.dx=rr(-13,13); p.dy=rr(-11,11); p.refl=rr(0.55,1);
+  }
+
+  const path = pts=>{ g.beginPath(); g.moveTo(pts[0][0],pts[0][1]); for(let k=1;k<pts.length;k++) g.lineTo(pts[k][0],pts[k][1]); g.closePath(); };
+
+  // 1) 灰缝底
+  const GROUT = oklch(0.66,0.012,85);
+  g.fillStyle = GROUT; g.fillRect(0,0,W,H);
+
+  // 2) 釉面 + 边缘积釉（釉在砖边流得厚，颜色更深）
+  for(const p of pieces){
+    if(p.bb[2]<0||p.bb[0]>W||p.bb[3]<0||p.bb[1]>H) continue;
+    path(p.pts); g.fillStyle=p.col; g.fill();
+    g.save(); path(p.pts); g.clip();
+    g.lineWidth=11; g.strokeStyle='rgba(6,16,18,0.30)'; path(p.pts); g.stroke();
+    g.restore();
+  }
+
+  // 3) 唯一的光：一扇窗的倒影，落在釉面上被砖块打碎
+  const WIN = {x:500, y:1150, w:430, h:660, bar:22, shear:-0.14};
+  const panes = [];
+  const pw=(WIN.w-WIN.bar)/2, ph=(WIN.h-WIN.bar)/2;
+  panes.push([WIN.x, WIN.y, pw, ph],[WIN.x+pw+WIN.bar, WIN.y, pw, ph],
+             [WIN.x, WIN.y+ph+WIN.bar, pw, ph],[WIN.x+pw+WIN.bar, WIN.y+ph+WIN.bar, pw, ph]);
+  const LIGHT = oklch(0.93,0.065,78);
+  const reach=[WIN.x-140, WIN.y-40, WIN.x+WIN.w+40, WIN.y+WIN.h+40];
+  for(const p of pieces){
+    const b=p.bb;
+    if(b[2]<reach[0]||b[0]>reach[2]||b[3]<reach[1]||b[1]>reach[3]) continue;
+    g.save();
+    path(p.pts); g.clip();
+    g.globalCompositeOperation='screen';
+    g.globalAlpha = 0.62*p.refl;
+    g.filter='blur(3px)';
+    g.translate(p.dx,p.dy);
+    // 斜切：窗在侧面，倒影不是正矩形
+    g.transform(1,0,WIN.shear,1,-WIN.shear*(WIN.y+WIN.h/2),0);
+    g.fillStyle=LIGHT;
+    for(const r of panes) g.fillRect(r[0],r[1],r[2],r[3]);
+    g.restore();
+  }
+
+  // 4) 灰缝线（哑光水泥，不反光，所以画在倒影之上）
+  g.strokeStyle=GROUT; g.lineWidth=5; g.lineJoin='round';
+  for(const p of pieces){
+    if(p.bb[2]<-10||p.bb[0]>W+10||p.bb[3]<-10||p.bb[1]>H+10) continue;
+    path(p.pts); g.stroke();
+  }
+})();
+</script>
+</body>
+</html>

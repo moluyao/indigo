@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>记一笔 · 15 秒宣传动效</title>
+<style>
+  html,body{margin:0;height:100%;background:#1b1916;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center}
+  canvas{display:block;width:min(100vw,177.78vh);height:auto}
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function(){
+  const W=1920, H=1080, DUR=15000;
+  const ctx=document.getElementById('c').getContext('2d');
+  // App 名称是事实空白：不编造。若有真名，可用 ?name=XXX 传入，结尾会显示。
+  const NAME=(new URLSearchParams(location.search).get('name')||'').slice(0,16);
+
+  function oklch(L,C,h,a){
+    const hr=h*Math.PI/180, A=C*Math.cos(hr), B=C*Math.sin(hr);
+    const l_=L+0.3963377774*A+0.2158037573*B, m_=L-0.1055613458*A-0.0638541728*B, s_=L-0.0894841775*A-1.2914855480*B;
+    const l=l_*l_*l_, m=m_*m_*m_, s=s_*s_*s_;
+    const lin=[4.0767416621*l-3.3077115913*m+0.2309699292*s,-1.2684380046*l+2.6097574011*m-0.3413193965*s,-0.0041960863*l-0.7034186147*m+1.7076147010*s];
+    const c=lin.map(x=>{x=Math.max(0,Math.min(1,x));return Math.round(255*(x<=0.0031308?12.92*x:1.055*Math.pow(x,1/2.4)-0.055));});
+    return a===undefined?`rgb(${c[0]},${c[1]},${c[2]})`:`rgba(${c[0]},${c[1]},${c[2]},${a})`;
+  }
+  function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+  function bez(x1,y1,x2,y2){return function(t){ if(t<=0)return 0; if(t>=1)return 1; let u=t;
+    for(let i=0;i<10;i++){const x=3*(1-u)*(1-u)*u*x1+3*(1-u)*u*u*x2+u*u*u-t;
+      const dx=3*(1-u)*(1-u)*x1+6*(1-u)*u*(x2-x1)+3*u*u*(1-x2); if(Math.abs(dx)<1e-6)break; u=clamp(u-x/dx);}
+    return 3*(1-u)*(1-u)*u*y1+3*(1-u)*u*u*y2+u*u*u; };}
+  const dock=bez(.31,.69,.64,1), sink=bez(.53,0,.67,1), pull=bez(.36,0,.69,.31);
+
+  // ---------- 颜色：单色场 + 唯一一次红（记账章） ----------
+  const BG=oklch(.25,.012,70), BODY=oklch(.17,.008,70), BODYTOP=oklch(.22,.01,70), SLOTC=oklch(.08,.005,70);
+  const PAPER=oklch(.96,.004,100), INK=oklch(.29,.012,260), TXT=oklch(.95,.006,90);
+  const RED=oklch(.56,.19,27);
+  const SANS='"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC",sans-serif';
+  const MONO='"Cascadia Mono",Consolas,Menlo,"SF Mono","Noto Sans Mono CJK SC","Microsoft YaHei",monospace';
+
+  // ---------- 小票几何 ----------
+  const SLOT=918, PL=1180, PR=1700, RC=1440, HD=190, LH=64, F0=HD+8;
+  const ITEMS=[
+    ["07:42","豆浆油条","7.00"],["08:15","地铁","4.00"],["10:03","咖啡","18.00"],["12:20","午饭","32.00"],
+    ["13:05","奶茶","15.00"],["15:40","打车","26.50"],["17:58","超市","68.00"],["18:30","水果","21.00"],
+    ["19:12","晚饭","29.00"],["20:05","地铁","4.00"],["21:30","充电宝","3.00"],["22:47","夜宵","12.00"]];
+  const TOTAL=ITEMS.reduce((s,r)=>s+parseFloat(r[2]),0); // = 239.50
+  // 每行开始打印的时刻：前两笔慢，之后间隔每次 ×0.8 左右，越记越快
+  const S=[600,1800,3000,3950,4700,5300,5780,6160,6460,6700,6890,7040];
+  const Dd=S.map((s,i)=>Math.min(240,0.75*((i<S.length-1?S[i+1]:s+1000)-s)));
+  const FEEDS=S.map((s,i)=>({s,d:Dd[i],a:LH})).concat([{s:8000,d:900,a:232}]);
+  const T_STAMP=9100, T_TEAR=10400;
+  const FEEDS2=[{s:11400,d:700,a:F0},{s:12800,d:240,a:LH}];
+
+  // 走纸：步进电机一格一格走，每格先走后停，无回弹
+  function stepEase(p,n){ if(p<=0)return 0; if(p>=1)return 1; const q=p*n, i=Math.floor(q), f=q-i;
+    const e=f<0.6?(1-Math.cos(Math.PI*f/0.6))/2:1; return (i+e)/n; }
+  function feed(list,t){ let F=0; for(const e of list) F+=e.a*stepEase((t-e.s)/e.d, Math.max(2,Math.ceil(e.a/16))); return F; }
+
+  // ---------- 记账章（离屏，固定种子做出印泥不匀） ----------
+  const stamp=document.createElement('canvas'); stamp.width=320; stamp.height=200;
+  (function(){
+    const g=stamp.getContext('2d'), r=rng(918);
+    g.strokeStyle=RED; g.fillStyle=RED; g.lineWidth=8;
+    const x=40,y=40,w=240,h=120,rd=16;
+    g.beginPath(); g.moveTo(x+rd,y); g.arcTo(x+w,y,x+w,y+h,rd); g.arcTo(x+w,y+h,x,y+h,rd); g.arcTo(x,y+h,x,y,rd); g.arcTo(x,y,x+w,y,rd); g.closePath(); g.stroke();
+    g.font=`700 82px ${SANS}`; g.textAlign='center'; g.textBaseline='middle'; g.fillText('已记',160,104);
+    g.globalCompositeOperation='destination-out';
+    for(let i=0;i<420;i++){ g.globalAlpha=0.35+0.65*r(); g.beginPath(); g.arc(r()*320,r()*200,0.6+r()*2.2,0,Math.PI*2); g.fill(); }
+    g.globalAlpha=0.45; g.fillRect(40,128+r()*20,240,3); // 一道没压实的横纹
+    g.globalAlpha=0.25; g.fillRect(200,40,90,120);     // 右侧用力偏轻
+  })();
+
+  // ---------- 绘制工具 ----------
+  function paperPath(yTop,yBot,tornTop,tornBot){
+    const T=13,A=6; ctx.beginPath(); ctx.moveTo(PL,yTop);
+    if(tornTop){ let k=0; for(let x=PL;x<=PR;x+=T,k++) ctx.lineTo(x,yTop+(k%2?A:0)); ctx.lineTo(PR,yTop); }
+    else ctx.lineTo(PR,yTop);
+    ctx.lineTo(PR,yBot);
+    if(tornBot){ let k=0; for(let x=PR;x>=PL;x-=T,k++) ctx.lineTo(x,yBot-(k%2?A:0)); ctx.lineTo(PL,yBot); }
+    else ctx.lineTo(PL,yBot);
+    ctx.closePath();
+  }
+  function dashed(y){ ctx.save(); ctx.strokeStyle=INK; ctx.globalAlpha=0.55; ctx.lineWidth=2; ctx.setLineDash([10,8]);
+    ctx.beginPath(); ctx.moveTo(PL+32,y); ctx.lineTo(PR-32,y); ctx.stroke(); ctx.restore(); }
+  function header(y0,date){
+    ctx.fillStyle=INK; ctx.textAlign='center';
+    ctx.font=`700 44px ${MONO}`; ctx.fillText('今日流水',RC,y0+78);
+    ctx.globalAlpha=0.75; ctx.font=`400 30px ${MONO}`; ctx.fillText(date,RC,y0+128); ctx.globalAlpha=1;
+    dashed(y0+160);
+  }
+  function itemLine(y,r){
+    ctx.fillStyle=INK; ctx.font=`400 36px ${MONO}`;
+    ctx.textAlign='left'; ctx.fillText(r[0],PL+36,y); ctx.fillText(r[1],PL+150,y);
+    ctx.textAlign='right'; ctx.fillText(r[2],PR-36,y);
+  }
+  function piece(y0,yBot,tornTop,tornBot,draw){
+    ctx.save(); ctx.beginPath(); ctx.rect(0,0,W,SLOT); ctx.clip();
+    ctx.save(); ctx.translate(12,12); paperPath(y0,yBot,tornTop,tornBot); ctx.fillStyle='rgba(0,0,0,0.24)'; ctx.fill(); ctx.restore();
+    paperPath(y0,yBot,tornTop,tornBot); ctx.fillStyle=PAPER; ctx.fill();
+    ctx.save(); paperPath(y0,yBot,tornTop,tornBot); ctx.clip(); draw(); ctx.restore();
+    ctx.restore();
+  }
+  function bigText(str,x,y,size,weight,alpha){ ctx.globalAlpha=alpha; ctx.fillStyle=TXT; ctx.textAlign='left';
+    ctx.font=`${weight} ${size}px ${SANS}`; ctx.fillText(str,x,y); ctx.globalAlpha=1; }
+
+  // ---------- 一帧 ----------
+  function render(ms){
+    const t=clamp(ms,0,DUR);
+    ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha=1; ctx.globalCompositeOperation='source-over';
+    ctx.textBaseline='alphabetic';
+    ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
+
+    // ===== 今天这一卷 =====
+    const torn=t>=T_TEAR;
+    const F=torn?feed(FEEDS,T_TEAR):feed(FEEDS,t);
+    let jolt=0; if(t>=T_STAMP&&t<T_STAMP+220){ const p=(t-T_STAMP)/220; jolt=5*(1-p)*(1-p); }
+    const lift=torn?-1500*pull(clamp((t-T_TEAR)/650)):0;
+    const y0=SLOT-F+jolt+lift;
+    if(y0<H){
+      const yBot=torn?SLOT+lift:SLOT+40;
+      piece(y0,yBot,false,torn,()=>{
+        header(y0,'2026-11-17 周二');
+        for(let k=0;k<ITEMS.length;k++) itemLine(y0+HD+54+k*LH,ITEMS[k]);
+        dashed(y0+HD+792);
+        ctx.fillStyle=INK; ctx.textAlign='left'; ctx.font=`700 48px ${MONO}`; ctx.fillText('合计',PL+36,y0+HD+862);
+        ctx.textAlign='right'; ctx.font=`700 56px ${MONO}`; ctx.fillText('¥'+TOTAL.toFixed(2),PR-36,y0+HD+862);
+        ctx.textAlign='left'; ctx.globalAlpha=0.7; ctx.font=`400 30px ${MONO}`; ctx.fillText('共 '+ITEMS.length+' 笔',PL+36,y0+HD+915); ctx.globalAlpha=1;
+        // 记账章：落定那一帧才完整出现，之前只是一个正在压下来的淡影
+        if(t>=T_STAMP-180){
+          const p=clamp((t-(T_STAMP-180))/180), e=sink(p);
+          const sc=1.32-0.32*e, al=t>=T_STAMP?1:0.18*e;
+          ctx.save(); ctx.translate(RC+70,y0+HD+840); ctx.rotate(-0.15); ctx.scale(sc,sc);
+          ctx.globalAlpha=al; ctx.globalCompositeOperation='multiply'; ctx.drawImage(stamp,-160,-100); ctx.restore();
+        }
+      });
+    }
+
+    // ===== 明天这一卷 =====
+    if(t>=FEEDS2[0].s){
+      const F2=feed(FEEDS2,t), z0=SLOT-F2;
+      piece(z0,SLOT+40,true,false,()=>{
+        header(z0,'2026-11-18 周三');
+        itemLine(z0+HD+54,["07:40","豆浆油条","7.00"]);
+      });
+    }
+
+    // ===== 打印机 =====
+    ctx.fillStyle=BODY; ctx.fillRect(1110,914,660,H-914);
+    ctx.fillStyle=BODYTOP; ctx.fillRect(1110,914,660,24);
+    ctx.fillStyle=SLOTC; ctx.fillRect(1165,915,550,6);
+
+    // ===== 左侧大字 =====
+    // 钩子 0–3.0s
+    if(t<3280){
+      const p=clamp((t-3000)/280), e=pull(p);
+      ctx.save(); ctx.translate(0,-50*e);
+      bigText('今天',140,430,150,700,1-p); bigText('花了多少？',140,610,150,700,1-p);
+      ctx.restore();
+    }
+    // 计数 3.1–10.8s
+    if(t>=3100&&t<10800){
+      const pin=clamp((t-3100)/350), ein=dock(pin);
+      const pout=clamp((t-10500)/300), eout=pull(pout);
+      const a=Math.min(1,pin*1.6)*(1-pout), dy=60*(1-ein)-40*eout;
+      ctx.save(); ctx.translate(0,dy);
+      bigText('第',140,650,110,400,a); bigText('笔',662,650,110,400,a);
+      let n=0, tf=-1e9; for(let k=0;k<S.length;k++){ const e=S[k]+Dd[k]; if(t>=e){n=k+1; tf=e;} }
+      const fp=clamp((t-tf)/130), fe=dock(fp);
+      ctx.save(); ctx.beginPath(); ctx.rect(250,360,410,320); ctx.clip();
+      ctx.font=`700 320px ${SANS}`; ctx.textAlign='right'; ctx.fillStyle=TXT;
+      if(fp<1&&n>1){
+        ctx.globalAlpha=a*(1-fp); ctx.fillText(String(n-1),640,650-176*fe);
+        ctx.globalAlpha=a*fp; ctx.fillText(String(n),640,650+176*(1-fe));
+      } else { ctx.globalAlpha=a; ctx.fillText(String(n),640,650); }
+      ctx.restore(); ctx.restore(); ctx.globalAlpha=1;
+    }
+    // 结语 11.0s 起
+    if(t>=11000){
+      const p1=clamp((t-11000)/420), p2=clamp((t-11140)/420);
+      ctx.save(); ctx.translate(0,50*(1-dock(p1))); bigText('花过的每一笔，',140,470,120,700,Math.min(1,p1*1.6)); ctx.restore();
+      ctx.save(); ctx.translate(0,50*(1-dock(p2))); bigText('都记得。',140,630,120,700,Math.min(1,p2*1.6)); ctx.restore();
+    }
+    if(NAME&&t>=13600){
+      const p=clamp((t-13600)/400);
+      ctx.save(); ctx.translate(0,30*(1-dock(p))); bigText(NAME,140,780,52,400,0.8*Math.min(1,p*1.6)); ctx.restore();
+    }
+  }
+
+  // ---------- 播放与 __seek ----------
+  let playing=true; const t0=performance.now();
+  function loop(now){ if(!playing) return; const t=now-t0; render(t); if(t<DUR) requestAnimationFrame(loop); else render(DUR); }
+  window.__seek=function(ms){ playing=false; render(ms); };
+  render(0);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

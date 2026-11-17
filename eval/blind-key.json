@@ -1,0 +1,17 @@
+{
+ "T1-A": "fable-indigo",
+ "T1-B": "fable-raw",
+ "T1-C": "opus-raw",
+ "T1-D": "deepseek-raw",
+ "T1-E": "opus-indigo",
+ "T2-A": "fable-indigo",
+ "T2-B": "deepseek-raw",
+ "T2-C": "fable-raw",
+ "T2-D": "opus-indigo",
+ "T2-E": "opus-raw",
+ "T3-A": "opus-indigo",
+ "T3-B": "opus-raw",
+ "T3-C": "deepseek-raw",
+ "T3-D": "fable-indigo",
+ "T3-E": "fable-raw"
+}

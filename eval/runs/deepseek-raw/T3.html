@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>记一笔 - 15秒宣传动效</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0a0c14;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+        canvas {
+            display: block;
+            border-radius: 8px;
+            box-shadow: 0 0 80px rgba(0, 0, 0, 0.7), 0 0 200px rgba(30, 60, 120, 0.3);
+            max-width: 100vw;
+            max-height: 100vh;
+            object-fit: contain;
+        }
+        #ui-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 13px;
+            letter-spacing: 1px;
+            user-select: none;
+            pointer-events: none;
+            font-family: inherit;
+            transition: opacity 0.5s;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="stage"></canvas>
+    <div id="ui-hint">记一笔 · 记录每一笔，掌控每一天</div>
+    <script>
+        (function() {
+            // ==================== 配置 ====================
+            const W = 1920;
+            const H = 1080;
+            const DURATION = 15000; // 15秒整
+            const canvas = document.getElementById('stage');
+            canvas.width = W;
+            canvas.height = H;
+            const ctx = canvas.getContext('2d');
+
+            // ==================== 固定种子随机数 ====================
+            function mulberry32(seed) {
+                let a = seed >>> 0;
+                return function() {
+                    a |= 0;
+                    a = (a + 0x6D2B79F5) | 0;
+                    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+                    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+                    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+                };
+            }
+
+            // 为给定时间生成确定性随机数生成器
+            function seededRandom(seed) {
+                return mulberry32(seed);
+            }
+
+            // ==================== Easing 函数 ====================
+            function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+            function easeOutBack(t) {
+                const c1 = 1.70158;
+                const c3 = c1 + 1;
+                return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+            }
+
+            function easeOutElastic(t) {
+                const c4 = (2 * Math.PI) / 3;
+                if (t === 0 || t === 1) return t;
+                return Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
+            }
+
+            function easeInOutCubic(t) {
+                return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+            }
+
+            function easeInQuad(t) { return t * t; }
+
+            function easeOutQuad(t) { return 1 - (1 - t) * (1 - t); }
+
+            function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
+
+            function easeOutExpo(t) { return t === 1 ? 1 : 1 - Math.pow(2, -10 * t); }
+
+            function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+            function lerp(a, b, t) { return a + (b - a) * t; }
+
+            function smoothstep(t) { return t * t * (3 - 2 * t); }
+
+            // ==================== 颜色方案 ====================
+            const COLORS = {
+                bgDark: '#0A0C14',
+                bgMid: '#101624',
+                bgLight: '#1A2235',
+                primary: '#4A90D9',
+                primaryLight: '#6BB3F0',
+                primaryDark: '#2D5A8E',
+                accent: '#34C759',
+                accentLight: '#5DE080',
+                danger: '#FF6B6B',
+                dangerLight: '#FF8E8E',
+                gold: '#FFD700',
+                goldLight: '#FFE44D',
+                purple: '#8B5CF6',
+                purpleLight: '#A78BFA',
+                cyan: '#00D4FF',
+                textPrimary: '#FFFFFF',
+                textSecondary: '#B0B8CC',
+                textMuted: '#6B7288',
+                cardBg: '#1E2A3D',
+                cardBorder: '#2A3A55',
+                shadow: 'rgba(0,0,0,0.5)',
+                overlay: 'rgba(10,12,20,0.85)',
+            };
+
+            // ==================== 动画状态 ====================
+            let currentTime = 0; // 当前时间(ms)
+            let isPlaying = true;
+            let lastFrameTime = 0;
+
+            // ==================== 工具函数 ====================
+            function drawRoundRect(ctx, x, y, w, h, r) {
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.arcTo(x + w, y, x + w, y + h, r);
+                ctx.arcTo(x + w, y + h, x, y + h, r);
+                ctx.arcTo(x, y + h, x, y, r);
+                ctx.arcTo(x, y, x + w, y, r);
+                ctx.closePath();
+            }
+
+            function drawCircle(ctx, cx, cy, radius, fillColor, strokeColor, lineWidth) {
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                if (fillColor) { ctx.fillStyle = fillColor;
+                    ctx.fill(); }
+                if (strokeColor) { ctx.strokeStyle = strokeColor;
+                    ctx.lineWidth = lineWidth || 1;
+                    ctx.stroke(); }
+            }
+
+            function drawText(ctx, text, x, y, fontSize, color, align, baseline, fontWeight, letterSpacing) {
+                ctx.save();
+                if (fontSize) ctx.font = (fontWeight || '400') + ' ' + fontSize + 'px system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif';
+                if (color) ctx.fillStyle = color;
+                if (align) ctx.textAlign = align;
+                if (baseline) ctx.textBaseline = baseline;
+                if (letterSpacing) {
+                    ctx.letterSpacing = letterSpacing + 'px';
+                }
+                ctx.fillText(text, x, y);
+                ctx.restore();
+            }
+
+            function drawLine(ctx, x1, y1, x2, y2, color, lineWidth, dash) {
+                ctx.save();
+                if (dash) ctx.setLineDash(dash);
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = lineWidth || 1;
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            function getEasedProgress(startMs, endMs, currentMs, easingFunc) {
+                if (currentMs < startMs) return 0;
+                if (currentMs > endMs) return 1;
+                const t = (currentMs - startMs) / (endMs - startMs);
+                return easingFunc ? easingFunc(t) : t;
+            }
+
+            function fadeIn(startMs, endMs, currentMs) {
+                return getEasedProgress(startMs, endMs, currentMs, easeOutCubic);
+            }
+
+            function fadeOut(startMs, endMs, currentMs) {
+                return 1 - getEasedProgress(startMs, endMs, currentMs, easeInQuad);
+            }
+
+            function scaleIn(startMs, endMs, currentMs, easingFunc) {
+                const p = getEasedProgress(startMs, endMs, currentMs, easingFunc || easeOutBack);
+                return p;
+            }
+
+            function slideInX(startMs, endMs, currentMs, fromX, toX, easingFunc) {
+                const p = getEasedProgress(startMs, endMs, currentMs, easingFunc || easeOutCubic);
+                return lerp(fromX, toX, p);
+            }
+
+            function slideInY(startMs, endMs, currentMs, fromY, toY, easingFunc) {
+                const p = getEasedProgress(startMs, endMs, currentMs, easingFunc || easeOutCubic);
+                return lerp(fromY, toY, p);
+            }
+
+            // ==================== 主渲染函数 ====================
+            function render(timeMs) {
+                const t = clamp(timeMs, 0, DURATION);
+                currentTime = t;
+                const ms = t;
+
+                // 清屏
+                ctx.clearRect(0, 0, W, H);
+
+                // 背景
+                drawBackground(ms);
+
+                // 场景调度
+                // Scene 1: 品牌开场 0-2000ms
+                // Scene 2: 账单列表 2000-4500ms
+                // Scene 3: 添加记账 4500-7000ms
+                // Scene 4: 统计图表 7000-10000ms
+                // Scene 5: 趋势分析 10000-12500ms
+                // Scene 6: 结束画面 12500-15000ms
+
+                if (ms < 2000) {
+                    drawScene1Brand(ms);
+                } else if (ms < 4500) {
+                    drawScene2List(ms);
+                } else if (ms < 7000) {
+                    drawScene3Add(ms);
+                } else if (ms < 10000) {
+                    drawScene4Charts(ms);
+                } else if (ms < 12500) {
+                    drawScene5Trend(ms);
+                } else {
+                    drawScene6End(ms);
+                }
+
+                // 全局粒子装饰
+                drawAmbientParticles(ms);
+
+                // 进度指示器（底部小点）
+                drawProgressIndicator(ms);
+            }
+
+            // ==================== 背景绘制 ====================
+            function drawBackground(ms) {
+                // 深色渐变背景
+                const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+                bgGrad.addColorStop(0, '#080A12');
+                bgGrad.addColorStop(0.4, '#0C1220');
+                bgGrad.addColorStop(0.7, '#111B2E');
+                bgGrad.addColorStop(1, '#0A0E1A');
+                ctx.fillStyle = bgGrad;
+                ctx.fillRect(0, 0, W, H);
+
+                // 动态光晕
+                const glow1X = W * 0.3 + Math.sin(ms / 3000) * 60;
+                const glow1Y = H * 0.35 + Math.cos(ms / 4000) * 40;
+                const glow1 = ctx.createRadialGradient(glow1X, glow1Y, 0, glow1X, glow1Y, 500);
+                glow1.addColorStop(0, 'rgba(74, 144, 217, 0.08)');
+                glow1.addColorStop(0.5, 'rgba(74, 144, 217, 0.03)');
+                glow1.addColorStop(1, 'rgba(74, 144, 217, 0)');
+                ctx.fillStyle = glow1;
+                ctx.fillRect(0, 0, W, H);
+
+                const glow2X = W * 0.7 + Math.cos(ms / 3500) * 50;
+                const glow2Y = H * 0.6 + Math.sin(ms / 2800) * 55;
+                const glow2 = ctx.createRadialGradient(glow2X, glow2Y, 0, glow2X, glow2Y, 420);
+                glow2.addColorStop(0, 'rgba(52, 199, 89, 0.06)');
+                glow2.addColorStop(0.5, 'rgba(52, 199, 89, 0.02)');
+                glow2.addColorStop(1, 'rgba(52, 199, 89, 0)');
+                ctx.fillStyle = glow2;
+                ctx.fillRect(0, 0, W, H);
+            }
+
+            // ==================== 环境粒子 ====================
+            function drawAmbientParticles(ms) {
+                const seedBase = Math.floor(ms / 50);
+                const rand = seededRandom(seedBase + 42);
+                const count = 30;
+                ctx.save();
+                for (let i = 0; i < count; i++) {
+                    const px = rand() * W;
+                    const py = rand() * H;
+                    const size = 1 + rand() * 3;
+                    const alpha = 0.15 + rand() * 0.35;
+                    const twinkle = 0.5 + 0.5 * Math.sin(ms / 800 + i * 1.3);
+                    const r = rand();
+                    const g = rand();
+                    const b = rand();
+                    const baseHue = r * 0.2 + g * 0.3 + b * 0.5;
+                    ctx.globalAlpha = alpha * twinkle;
+                    const particleColor = baseHue > 0.6 ? COLORS.primaryLight :
+                        baseHue > 0.35 ? COLORS.accentLight : COLORS.textSecondary;
+                    ctx.fillStyle = particleColor;
+                    ctx.beginPath();
+                    ctx.arc(px, py, size * twinkle, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            // ==================== 进度指示器 ====================
+            function drawProgressIndicator(ms) {
+                const dots = 5;
+                const dotSpacing = 24;
+                const totalWidth = (dots - 1) * dotSpacing;
+                const startX = W / 2 - totalWidth / 2;
+                const dotY = H - 50;
+                const activeIndex = Math.floor(ms / (DURATION / dots));
+
+                for (let i = 0; i < dots; i++) {
+                    const x = startX + i * dotSpacing;
+                    const isActive = i === activeIndex;
+                    const isPast = i < activeIndex;
+                    const dotAlpha = isActive ? 0.9 : isPast ? 0.5 : 0.3;
+                    const dotSize = isActive ? 8 : 6;
+                    const dotColor = isActive ? COLORS.primaryLight :
+                        isPast ? COLORS.primary : COLORS.textMuted;
+
+                    ctx.save();
+                    ctx.globalAlpha = dotAlpha;
+                    ctx.fillStyle = dotColor;
+                    ctx.beginPath();
+                    ctx.arc(x, dotY, dotSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    if (isActive) {
+                        ctx.globalAlpha = 0.3;
+                        ctx.beginPath();
+                        ctx.arc(x, dotY, dotSize + 6, 0, Math.PI * 2);
+                        ctx.strokeStyle = COLORS.primaryLight;
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+
+                // 时间显示
+                const secs = (ms / 1000).toFixed(1);
+                drawText(ctx, secs + 's', W / 2, dotY - 40, 16, 'rgba(255,255,255,0.35)', 'center', 'middle', '400', 1);
+            }
+
+            // ==================== 场景1: 品牌开场 (0-2000ms) ====================
+            function drawScene1Brand(ms) {
+                const cx = W / 2;
+                const cy = H / 2 - 80;
+
+                // Logo 缩放动画 (0-800ms)
+                const logoScale = scaleIn(0, 700, ms, easeOutBack);
+                const logoAlpha = fadeIn(0, 400, ms);
+
+                if (logoAlpha > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = logoAlpha;
+                    ctx.translate(cx, cy);
+                    ctx.scale(logoScale, logoScale);
+
+                    // Logo 圆环
+                    const logoR = 110;
+                    const ringGrad = ctx.createLinearGradient(-logoR, -logoR, logoR, logoR);
+                    ringGrad.addColorStop(0, COLORS.primaryLight);
+                    ringGrad.addColorStop(0.5, COLORS.primary);
+                    ringGrad.addColorStop(1, COLORS.primaryDark);
+                    ctx.fillStyle = ringGrad;
+                    drawCircle(ctx, 0, 0, logoR, ringGrad, null);
+
+                    // 内圈
+                    const innerR = 88;
+                    const innerGrad = ctx.createRadialGradient(0, -20, 10, 0, 0, innerR);
+                    innerGrad.addColorStop(0, '#1E2A4D');
+                    innerGrad.addColorStop(1, '#0F1A2F');
+                    ctx.fillStyle = innerGrad;
+                    drawCircle(ctx, 0, 0, innerR, innerGrad, COLORS.cardBorder, 2);
+
+                    // ¥ 符号
+                    ctx.fillStyle = COLORS.gold;
+                    ctx.font = '700 72px system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('¥', 0, 4);
+
+                    // 装饰点
+                    for (let i = 0; i < 12; i++) {
+                        const angle = (i / 12) * Math.PI * 2 + ms / 5000;
+                        const dotR = logoR + 18;
+                        const dx = Math.cos(angle) * dotR;
+                        const dy = Math.sin(angle) * dotR;
+                        const dotAlpha = 0.3 + 0.3 * Math.sin(ms / 600 + i);
+                        ctx.fillStyle = COLORS.gold;
+                        ctx.globalAlpha = dotAlpha;
+                        ctx.beginPath();
+                        ctx.arc(dx, dy, 4 + 2 * Math.sin(ms / 400 + i * 0.5), 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.globalAlpha = 1;
+                    ctx.restore();
+                }
+
+                // 品牌名称 (400-1500ms)
+                const nameAlpha = fadeIn(400, 1000, ms);
+                const nameY = slideInY(400, 900, ms, cy + 140, cy + 160, easeOutCubic);
+                if (nameAlpha > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = nameAlpha;
+                    drawText(ctx, '记一笔', cx, nameY, 54, COLORS.textPrimary, 'center', 'middle', '700', 2);
+                    drawText(ctx, '记录每一笔，掌控每一天', cx, nameY + 58, 24, COLORS.textSecondary, 'center', 'middle', '300',
+                        4);
+                    ctx.restore();
+                }
+
+                // 装饰性光环 (600-1800ms)
+                const ringP = getEasedProgress(500, 1600, ms, easeOutQuart);
+                if (ringP > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = (1 - ringP) * 0.6;
+                    ctx.translate(cx, cy);
+                    const ringR = 130 + ringP * 260;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ringR, 0, Math.PI * 2);
+                    ctx.strokeStyle = COLORS.primary;
+                    ctx.lineWidth = 2.5 * (1 - ringP);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // 底部提示文字 (1200-2000ms)
+                const hintAlpha = fadeIn(1200, 1700, ms);
+                if (hintAlpha > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = hintAlpha;
+                    drawText(ctx, '简单 · 智能 · 高效', cx, H - 160, 22, 'rgba(255,255,255,0.5)', 'center', 'middle', '400',
+                        6);
+                    ctx.restore();
+                }
+            }
+
+            // ==================== 手机模型 ====================
+            function drawPhoneFrame(phoneX, phoneY, phoneW, phoneH, alpha, ms) {
+                if (alpha <= 0) return;
+                ctx.save();
+                ctx.globalAlpha = alpha;
+
+                // 手机外框
+                const frameR = 32;
+                const frameGrad = ctx.createLinearGradient(phoneX, phoneY, phoneX + phoneW, phoneY + phoneH);
+                frameGrad.addColorStop(0, '#3A4A6A');
+                frameGrad.addColorStop(0.5, '#2A3A5A');
+                frameGrad.addColorStop(1, '#1E2A42');
+                drawRoundRect(ctx, phoneX - 8, phoneY - 8, phoneW + 16, phoneH + 16, frameR + 8);
+                ctx.fillStyle = frameGrad;
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // 手机屏幕
+                drawRoundRect(ctx, phoneX, phoneY, phoneW, phoneH, frameR);
+                const screenGrad = ctx.createLinearGradient(phoneX, phoneY, phoneX, phoneY + phoneH);
+                screenGrad.addColorStop(0, '#0F1A30');
+                screenGrad.addColorStop(0.5, '#0D1525');
+                screenGrad.addColorStop(1, '#0A1020');
+                ctx.fillStyle = screenGrad;
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // 刘海/前置摄像头
+                const notchW = phoneW * 0.28;
+                const notchH = 22;
+                const notchX = phoneX + (phoneW - notchW) / 2;
+                const notchY = phoneY + 8;
+                drawRoundRect(ctx, notchX, notchY, notchW, notchH, 11);
+                ctx.fillStyle = '#1A2540';
+                ctx.fill();
+
+                ctx.restore();
+            }
+
+            function getPhonePosition(ms) {
+                const phoneW = 340;
+                const phoneH = 730;
+                const phoneX = W - phoneW - 180;
+                const phoneY = (H - phoneH) / 2;
+                return { x: phoneX, y: phoneY, w: phoneW, h: phoneH };
+            }
+
+            // ==================== 场景2: 账单列表 (2000-4500ms) ====================
+            function drawScene2List(ms) {
+                const { x: phoneX, y: phoneY, w: phoneW, h: phoneH } = getPhonePosition(ms);
+                const cx = W / 2;
+
+                // 左侧文案
+                const textAlpha = fadeIn(2000, 2500, ms);
+                const textX = slideInX(2000, 2500, ms, cx - 250, cx - 350, easeOutCubic);
+                if (textAlpha > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = textAlpha;
+                    drawText(ctx, '清晰账目', textX, phoneY + 80, 42, COLORS.textPrimary, 'left', 'middle', '700', 2);
+                    drawText(ctx, '每一笔都一目了然', textX, phoneY + 140, 22, COLORS.textSecondary, 'left', 'middle', '300',
+                        2);
+                    // 装饰线
+                    const lineP = getEasedProgress(2400, 2800, ms, easeOutQuart);
+                    if (lineP > 0) {
+                        drawLine(ctx, textX, phoneY + 180, textX + 200 * lineP, phoneY + 180, COLORS.primary, 3);
+                    }
+                    ctx.restore();
+                }
+
+                // 手机滑入
+                const phoneSlideP = getEasedProgress(2000, 2700, ms, easeOutCubic);
+                const phoneAlpha = phoneSlideP;
+                const phoneOffsetX = (1 - phoneSlideP) * 300;
+                const phoneCurX = phoneX + phoneOffsetX;
+
+                // 手机进入
+                drawPhoneFrame(phoneCurX, phoneY, phoneW, phoneH, phoneAlpha, ms);
+
+                if (phoneSlideP > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = phoneAlpha;
+                    const screenX = phoneCurX + 12;
+                    const screenY = phoneY + 40;
+                    const screenW = phoneW - 24;
+                    const screenH = phoneH - 56;
+
+                    // 屏幕内容裁剪区域
+                    ctx.save();
+                    drawRoundRect(ctx, screenX, screenY, screenW, screenH, 20);
+                    ctx.clip();
+
+                    // App 顶部栏
+                    const headerY = screenY + 20;
+                    drawText(ctx, '本月账目', screenX + 20, headerY, 16, COLORS.textPrimary, 'left', 'middle', '600', 1);
+                    drawText(ctx, '¥ 12,580.00', screenX + screenW - 20, headerY, 16, COLORS.accentLight, 'right',
+                        'middle', '600', 0);
+
+                    // 分隔线
+                    drawLine(ctx, screenX + 16, headerY + 18, screenX + screenW - 16, headerY + 18,
+                        'rgba(255,255,255,0.1)', 1);
+
+                    // 列表项
+                    const listData = [
+                        { icon: '🍜', name: '午餐', category: '餐饮', amount: '-42.00', isIncome: false },
+                        { icon: '🚌', name: '公交', category: '交通', amount: '-2.00', isIncome: false },
+                        { icon: '💰', name: '工资', category: '收入', amount: '+18,500.00', isIncome: true },
+                        { icon: '📱', name: '手机充值', category: '通讯', amount: '-100.00', isIncome: false },
+                        { icon: '🛒', name: '超市购物', category: '购物', amount: '-268.50', isIncome: false },
+                        { icon: '☕', name: '咖啡', category: '餐饮', amount: '-28.00', isIncome: false },
+                    ];
+
+                    const itemStartY = screenY + 48;
+                    const itemHeight = 46;
+                    const itemGap = 6;
+                    const listStartMs = 2700;
+                    const itemDuration = 180;
+
+                    listData.forEach((item, idx) => {
+                        const itemStart = listStartMs + idx * itemDuration;
+                        const itemP = getEasedProgress(itemStart, itemStart + 500, ms, easeOutCubic);
+                        if (itemP <= 0) return;
+                        const itemAlpha = itemP;
+                        const itemX = screenX + 16;
+                        const itemY = itemStartY + idx * (itemHeight + itemGap);
+                        const itemSlideX = (1 - itemP) * 40;
+
+                        ctx.save();
+                        ctx.globalAlpha = itemAlpha;
+
+                        // 项目背景
+                        drawRoundRect(ctx, itemX + itemSlideX, itemY, screenW - 32, itemHeight, 12);
+                        const itemBg = idx === 2 ? 'rgba(52,199,89,0.15)' : 'rgba(255,255,255,0.04)';
+                        ctx.fillStyle = itemBg;
+                        ctx.fill();
+
+                        // 图标
+                        ctx.font = '20px system-ui';
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(item.icon, itemX + 14 + itemSlideX, itemY + itemHeight / 2);
+
+                        // 名称
+                        ctx.fillStyle = COLORS.textPrimary;
+                        ctx.font = '400 14px system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                        ctx.textAlign = 'left';
+                        ctx.fillText(item.name, itemX + 45 + itemSlideX, itemY + itemHeight / 2 - 8);
+
+                        // 分类
+                        ctx.fillStyle = COLORS.textMuted;
+                        ctx.font = '300 11px system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                        ctx.fillText(item.category, itemX + 45 + itemSlideX, itemY + itemHeight / 2 + 12);
+
+                        // 金额
+                        ctx.font = '600 14px system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                        ctx.textAlign = 'right';
+                        ctx.fillStyle = item.isIncome ? COLORS.accentLight : COLORS.dangerLight;
+                        ctx.fillText(item.amount, screenX + screenW - 30 - (1 - itemP) * 20, itemY + itemHeight / 2);
+
+                        ctx.restore();
+                    });
+
+                    ctx.restore(); // 结束裁剪
+
+                    // 底部导航栏
+                    const navY = screenY + screenH - 40;
+                    drawLine(ctx, screenX + 12, navY - 6, screenX + screenW - 12, navY - 6, 'rgba(255,255,255,0.1)', 1);
+                    const navItems = ['📊', '📋', '➕', '📈', '👤'];
+                    const navW = screenW / 5;
+                    navItems.forEach((icon, idx) => {
+                        const navX = screenX + navW * idx + navW / 2;
+                        if (idx === 2) {
+                            // 中间加号按钮
+                            ctx.fillStyle = COLORS.primary;
+                            drawCircle(ctx, navX, navY + 8, 16, COLORS.primary, null);
+                            ctx.fillStyle = '#FFF';
+                            ctx.font = '20px system-ui';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText('+', navX, navY + 7);
+                        } else {
+                            ctx.globalAlpha = 0.7;
+                            ctx.font = '16px system-ui';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(icon, navX, navY + 8);
+                            ctx.globalAlpha = phoneAlpha;
+                        }
+                    });
+
+                    ctx.restore();
+                }
+
+                // 右侧高亮标签
+                const highlightP = getEasedProgress(3300, 3800, ms, easeOutBack);
+                if (highlightP > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = highlightP;
+                    const tagX = phoneCurX + phoneW + 40;
+                    const tagY = phoneY + 120;
+                    drawRoundRect(ctx, tagX, tagY, 68, 26, 13);
+                    ctx.fillStyle = COLORS.accent;
+                    ctx.fill();
+                    drawText(ctx, '收入', tagX + 34, tagY + 13, 13, '#FFF', 'center', 'middle', '600', 1);
+                    const tagY2 = tagY + 130;
+                    drawRoundRect(ctx, tagX, tagY2, 68, 26, 13);
+                    ctx.fillStyle = COLORS.danger;
+                    ctx.fill();
+                    drawText(ctx, '支出', tagX + 34, tagY2 + 13, 13, '#FFF', 'center', 'middle', '600', 1);
+                    ctx.restore();
+                }
+            }
+
+            // ==================== 场景3: 添加记账 (4500-7000ms) ====================
+            function drawScene3Add(ms) {
+                const { x: phoneX, y: phoneY, w: phoneW, h: phoneH } = getPhonePosition(ms);
+                const cx = W / 2;
+
+                // 左侧文案切换
+                const textAlpha = fadeIn(4500, 4900, ms);
+                if (textAlpha > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = textAlpha;
+                    drawText(ctx, '三秒记账', cx - 350, phoneY + 80, 42, COLORS.textPrimary, 'left', 'middle', '700', 2);
+                    drawText(ctx, '快速记录每笔收支', cx - 350, phoneY + 140, 22, COLORS.textSecondary, 'left', 'middle', '300',
+                        2);
+                    drawLine(ctx, cx - 350, phoneY + 180, cx - 350 + 180 * getEasedProgress(4800, 5200, ms, easeOutQuart),
+                        phoneY + 180, COLORS.accent, 3);
+                    ctx.restore();
+                }
+
+                // 手机淡入
+                const phoneAlpha = fadeIn(4500, 5000, ms);
+                drawPhoneFrame(phoneX, phoneY, phoneW, phoneH, phoneAlpha, ms);
+
+                if (phoneAlpha > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = phoneAlpha;
+                    const screenX = phoneX + 12;
+                    const screenY = phoneY + 40;
+                    const screenW = phoneW - 24;
+                    const screenH = phoneH - 56;
+
+                    ctx.save();
+                    drawRoundRect(ctx, screenX, screenY, screenW, screenH, 20);
+                    ctx.clip();
+
+                    // 顶部
+                    drawText(ctx, '记一笔', screenX + screenW / 2, screenY + 26, 18, COLORS.textPrimary, 'center',
+                        'middle', '600', 1);
+                    drawLine(ctx, screenX + 16, screenY + 38, screenX + screenW - 16, screenY + 38,
+                        'rgba(255,255,255,0.1)', 1);
+
+                    // 金额输入框
+                    const amountP = getEasedProgress(5000, 5400, ms, easeOutCubic);
+                    if (amountP > 0) {
+                        const boxY = screenY + 55;
+                        const boxAlpha = amountP;
+                        ctx.save();
+                        ctx.globalAlpha = boxAlpha;
+                        drawRoundRect(ctx, screenX + 20, boxY, screenW - 40, 60, 14);
+                        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+                        ctx.fill();
+                        ctx.strokeStyle = 'rgba(74,144,217,0.4)';
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+
+                        const amountScale = 1 + (1 - amountP) * 0.1;
+                        ctx.save();
+                        ctx.translate(screenX + 40, boxY + 30);
+                        ctx.scale(amountScale, amountScale);
+                        drawText(ctx, '¥', 0, 0, 24, COLORS.textMuted, 'left', 'middle', '400', 0);
+                        drawText(ctx, '268.50', 24, 2, 32, COLORS.textPrimary, 'left', 'middle', '700', 0);
+                        ctx.restore();
+
+                        drawText(ctx, '点击输入金额', screenX + screenW - 40, boxY + 30, 14, COLORS.textMuted, 'right',
+                            'middle', '300', 0);
+                        ctx.restore();
+                    }
+
+                    // 分类标签
+                    const categories = [
+                        { icon: '🍜', label: '餐饮' },
+                        { icon: '🚌', label: '交通' },
+                        { icon: '💰', label: '收入' },
+                        { icon: '📱', label: '通讯' },
+                        { icon: '🛒', label: '购物' },
+                        { icon: '☕', label: '咖啡' },
+                    ];
+                    const catStartY = screenY + 135;
+                    const catCols = 3;
+                    const catW = (screenW - 48) / catCols;
+                    const catH = 70;
+                    const catGapY = 12;
+
+                    categories.forEach((cat, idx) => {
+                        const catStart = 5400 + idx * 100;
+                        const catP = getEasedProgress(catStart, catStart + 500, ms, easeOutBack);
+                        if (catP <= 0) return;
+                        const col = idx % catCols;
+                        const row = Math.floor(idx / catCols);
+                        const catX = screenX + 20 + col * catW;
+                        const catY = catStartY + row * (catH + catGapY);
+
+                        ctx.save();
+                        ctx.globalAlpha = catP;
+                        const catScale = 0.8 + 0.2 * catP;
+                        ctx.translate(catX + catW / 2, catY + catH / 2);
+                        ctx.scale(catScale, catScale);
+                        ctx.translate(-(catX + catW / 2), -(catY + catH / 2));
+
+                        drawRoundRect(ctx, catX + 4, catY + 4, catW - 8, catH - 8, 12);
+                        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                        ctx.fill();
+                        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+
+                        ctx.font = '22px system-ui';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(cat.icon, catX + catW / 2, catY + 24);
+                        ctx.fillStyle = COLORS.textSecondary;
+                        ctx.font = '400 12px system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                        ctx.fillText(cat.label, catX + catW / 2, catY + 48);
+                        ctx.restore();
+                    });
+
+                    // 保存按钮
+                    const saveP = getEasedProgress(6200, 6600, ms, easeOutCubic);
+                    if (saveP > 0) {
+                        ctx.save();
+                        ctx.globalAlpha = saveP;
+                        const btnY = screenY + screenH - 80;
+                        const btnGrad = ctx.createLinearGradient(screenX + 20, btnY, screenX + screenW - 20, btnY);
+                        btnGrad.addColorStop(0, COLORS.primary);
+                        btnGrad.addColorStop(1, COLORS.primaryLight);
+                        drawRoundRect(ctx, screenX + 20, btnY, screenW - 40, 44, 22);
+                        ctx.fillStyle = btnGrad;
+                        ctx.fill();
+                        ctx.shadowColor = 'rgba(74,144,217,0.5)';
+                        ctx.shadowBlur = 16;
+                        ctx.fill();
+                        ctx.shadowColor = 'transparent';
+                        drawText(ctx, '保存记录', screenX + screenW / 2, btnY + 22, 15, '#FFF', 'center', 'middle', '600',
+                            2);
+                        ctx.restore();
+                    }
+
+                    ctx.restore();
+                    ctx.restore();
+                }
+            }
+
+            // ==================== 场景4: 统计图表 (7000-10000ms) ====================
+            function drawScene4Charts(ms) {
+                const { x: phoneX, y: phoneY, w: phoneW, h: phoneH } = getPhonePosition(ms);
+                const cx = W / 2;
+
+                // 左侧文案
+                const textAlpha = fadeIn(7000, 7400, ms);
+                if (textAlpha > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = textAlpha;
+                    drawText(ctx, '智能统计', cx - 350, phoneY + 80, 42, COLORS.textPrimary, 'left', 'middle', '700', 2);
+                    drawText(ctx, '消费结构一目了然', cx - 350, phoneY + 140, 22, COLORS.textSecondary, 'left', 'middle', '300',
+                        2);
+                    drawLine(ctx, cx - 350, phoneY + 180, cx - 350 + 180 * getEasedProgress(7300, 7700, ms, easeOutQuart),
+                        phoneY + 180, COLORS.gold, 3);
+                    ctx.restore();
+                }
+
+                const phoneAlpha = fadeIn(7000, 7500, ms);
+                drawPhoneFrame(phoneX, phoneY, phoneW, phoneH, phoneAlpha, ms);
+
+                if (phoneAlpha > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = phoneAlpha;
+                    const screenX = phoneX + 12;
+                    const screenY = phoneY + 40;
+                    const screenW = phoneW - 24;
+                    const screenH = phoneH - 56;
+
+                    ctx.save();
+                    drawRoundRect(ctx, screenX, screenY, screenW, screenH, 20);
+                    ctx.clip();
+
+                    // 顶部标题
+                    drawText(ctx, '统计报表', screenX + screenW / 2, screenY + 26, 18, COLORS.textPrimary, 'center',
+                        'middle', '600', 1);
+                    drawLine(ctx, screenX + 16, screenY + 38, screenX + screenW - 16, screenY + 38,
+                        'rgba(255,255,255,0.1)', 1);
+
+                    // 饼图动画
+                    const pieCX = screenX + screenW / 2;
+                    const pieCY = screenY + 170;
+                    const pieR = 120;
+                    const pieData = [
+                        { label: '餐饮', value: 35, color: '#FF6B6B' },
+                        { label: '购物', value: 28, color: '#4A90D9' },
+                        { label: '交通', value: 12, color: '#FFD700' },
+                        { label: '通讯', value: 8, color: '#8B5CF6' },
+                        { label: '其他', value: 17, color: '#34C759' },
+                    ];
+                    const pieStart = 7400;
+                    const pieDuration = 1200;
+
+                    let currentAngle = -Math.PI / 2;
+                    let totalDrawn = 0;
+
+                    pieData.forEach((slice, idx) => {
+                        const sliceP = getEasedProgress(
+                            pieStart + idx * 200,
+                            pieStart + idx * 200 + 600,
+                            ms,
+                            easeOutCubic
+                        );
+                        if (sliceP <= 0) return;
+                        const sliceAngle = (slice.value / 100) * Math.PI * 2 * sliceP;
+                        const endAngle = currentAngle + sliceAngle;
+
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.moveTo(pieCX, pieCY);
+                        ctx.arc(pieCX, pieCY, pieR, currentAngle, endAngle);
+                        ctx.closePath();
+                        ctx.globalAlpha = sliceP;
+                        ctx.fillStyle = slice.color;
+                        ctx.fill();
+                        ctx.strokeStyle = '#0D1525';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        ctx.restore();
+
+                        if (idx === 0 && sliceP > 0.3) {
+                            // 中心白点
+                            const centerP = getEasedProgress(pieStart + 200, pieStart + 600, ms, easeOutCubic);
+                            if (centerP > 0) {
+                                ctx.save();
+                                ctx.globalAlpha = centerP;
+                                drawCircle(ctx, pieCX, pieCY, 48, '#0F1A30', null);
+                                drawText(ctx, '支出', pieCX, pieCY - 8, 16, COLORS.textSecondary, 'center', 'middle', '500',
+                                    1);
+                                drawText(ctx, '¥ 8,420', pieCX, pieCY + 18, 18, COLORS.textPrimary, 'center', 'middle',
+                                    '700', 0);
+                                ctx.restore();
+                            }
+                        }
+                        currentAngle += sliceAngle;
+                        totalDrawn += slice.value * sliceP;
+                    });
+
+                    // 图例
+                    const legendP = getEasedProgress(8000, 8400, ms, easeOutCubic);
+                    if (legendP > 0) {
+                        ctx.save();
+                        ctx.globalAlpha = legendP;
+                        const legendStartY = screenY + 320;
+                        const legendCols = 2;
+                        const legendW = (screenW - 48) / legendCols;
+                        pieData.forEach((item, idx) => {
+                            const col = idx % legendCols;
+                            const row = Math.floor(idx / legendCols);
+                            const lx = screenX + 20 + col * legendW;
+                            const ly = legendStartY + row * 30;
+                            drawCircle(ctx, lx + 8, ly + 8, 6, item.color, null);
+                            drawText(ctx, item.label + ' ' + item.value + '%', lx + 22, ly + 8, 12, COLORS
+                                .textSecondary, 'left', 'middle', '400', 0);
+                        });
+                        ctx.restore();
+                    }
+
+                    // 柱状图
+                    const barP = getEasedProgress(8400, 9200, ms, easeOutCubic);
+                    if (barP > 0) {
+                        ctx.save();
+                        ctx.globalAlpha = barP;
+                        const barStartY = screenY + 420;
+                        const barAreaH = 100;
+                        const barChartData = [
+                            { label: '1月', value: 3200 },
+                            { label: '2月', value: 2800 },
+                            { label: '3月', value: 4500 },
+                            { label: '4月', value: 5100 },
+                            { label: '5月', value: 4800 },
+                            { label: '6月', value: 6200 },
+                        ];
+                        const maxBarVal = Math.max(...barChartData.map(d => d.value));
+                        const barCount = barChartData.length;
+                        const barGap = 12;
+                        const barW = (screenW - 48 - barGap * (barCount - 1)) / barCount;
+
+                        barChartData.forEach((bar, idx) => {
+                            const barH = (bar.value / maxBarVal) * barAreaH * barP;
+                            const bx = screenX + 20 + idx * (barW + barGap);
+                            const by = barStartY + barAreaH - barH;
+                            const barAlpha = getEasedProgress(8400 + idx * 100, 8500 + idx * 100 + 400,
+                                ms, easeOutCubic);
+                            if (barAlpha <= 0) return;
+                            ctx.save();
+                            ctx.globalAlpha = barAlpha;
+                            const barGrad = ctx.createLinearGradient(bx, by, bx, barStartY + barAreaH);
+                            barGrad.addColorStop(0, COLORS.primaryLight);
+                            barGrad.addColorStop(1, COLORS.primaryDark);
+                            drawRoundRect(ctx, bx, by, barW, barH, 6);
+                            ctx.fillStyle = barGrad;
+                            ctx.fill();
+                            drawText(ctx, bar.label, bx + barW / 2, barStartY + barAreaH + 14, 10, COLORS.textMuted,
+                                'center', 'middle', '400', 0);
+                            ctx.restore();
+                        });
+                        ctx.restore();
+                    }
+
+                    ctx.restore();
+                    ctx.restore();
+                }
+            }
+
+            // ==================== 场景5: 趋势分析 (10000-12500ms) ====================
+            function drawScene5Trend(ms) {
+                const { x: phoneX, y: phoneY, w: phoneW, h: phoneH } = getPhonePosition(ms);
+                const cx = W / 2;
+
+                const textAlpha = fadeIn(10000, 10400, ms);
+                if (textAlpha > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = textAlpha;
+                    drawText(ctx, '趋势洞察', cx - 350, phoneY + 80, 42, COLORS.textPrimary, 'left', 'middle', '700', 2);
+                    drawText(ctx, '掌控财务走向', cx - 350, phoneY + 140, 22, COLORS.textSecondary, 'left', 'middle', '300',
+                        2);
+                    drawLine(ctx, cx - 350, phoneY + 180, cx - 350 + 180 * getEasedProgress(10300, 10700, ms, easeOutQuart),
+                        phoneY + 180, COLORS.purpleLight, 3);
+                    ctx.restore();
+                }
+
+                const phoneAlpha = fadeIn(10000, 10500, ms);
+                drawPhoneFrame(phoneX, phoneY, phoneW, phoneH, phoneAlpha, ms);
+
+                if (phoneAlpha > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = phoneAlpha;
+                    const screenX = phoneX + 12;
+                    const screenY = phoneY + 40;
+                    const screenW = phoneW - 24;
+                    const screenH = phoneH - 56;
+
+                    ctx.save();
+                    drawRoundRect(ctx, screenX, screenY, screenW, screenH, 20);
+                    ctx.clip();
+
+                    drawText(ctx, '月度趋势', screenX + screenW / 2, screenY + 26, 18, COLORS.textPrimary, 'center',
+                        'middle', '600', 1);
+                    drawLine(ctx, screenX + 16, screenY + 38, screenX + screenW - 16, screenY + 38,
+                        'rgba(255,255,255,0.1)', 1);
+
+                    // 折线图
+                    const chartData = [
+                        { month: '1月', income: 12000, expense: 8000 },
+                        { month: '2月', income: 13500, expense: 7500 },
+                        { month: '3月', income: 11000, expense: 9200 },
+                        { month: '4月', income: 15200, expense: 8800 },
+                        { month: '5月', income: 16800, expense: 9500 },
+                        { month: '6月', income: 18500, expense: 10100 },
+                    ];
+                    const chartX0 = screenX + 45;
+                    const chartX1 = screenX + screenW - 25;
+                    const chartY0 = screenY + 60;
+                    const chartY1 = screenY + 280;
+                    const chartW = chartX1 - chartX0;
+                    const chartH = chartY1 - chartY0;
+                    const maxVal = 20000;
+
+                    // 网格线
+                    ctx.save();
+                    ctx.globalAlpha = 0.15;
+                    for (let i = 0; i <= 4; i++) {
+                        const gy = chartY0 + (chartH / 4) * i;
+                        drawLine(ctx, chartX0, gy, chartX1, gy, 'rgba(255,255,255,0.2)', 0.8);
+                        drawText(ctx, Math.round(maxVal * (1 - i / 4)) + '', chartX0 - 8, gy, 9, COLORS.textMuted, 'right',
+                            'middle', '300', 0);
+                    }
+                    ctx.restore();
+
+                    // 折线绘制动画
+                    const lineP = getEasedProgress(10500, 11300, ms, easeOutCubic);
+                    if (lineP > 0) {
+                        const points = chartData.map((d, idx) => {
+                            const px = chartX0 + (chartW / (chartData.length - 1)) * idx;
+                            const py = chartY1 - (d.income / maxVal) * chartH;
+                            return { x: px, y: py };
+                        });
+                        const pointsExpense = chartData.map((d, idx) => {
+                            const px = chartX0 + (chartW / (chartData.length - 1)) * idx;
+                            const py = chartY1 - (d.expense / maxVal) * chartH;
+                            return { x: px, y: py };
+                        });
+
+                        const drawCount = Math.ceil(lineP * (points.length - 1)) + 1;
+
+                        // 收入线
+                        ctx.save();
+                        ctx.globalAlpha = lineP;
+                        ctx.beginPath();
+                        ctx.moveTo(points[0].x, points[0].y);
+                        for (let i = 1; i < drawCount && i < points.length; i++) {
+                            const prev = points[i - 1];
+                            const cur = points[i];
+                            const midX = (prev.x + cur.x) / 2;
+                            ctx.bezierCurveTo(midX, prev.y, midX, cur.y, cur.x, cur.y);
+                        }
+                        ctx.strokeStyle = COLORS.accent;
+                        ctx.lineWidth = 3;
+                        ctx.lineJoin = 'round';
+                        ctx.lineCap = 'round';
+                        ctx.stroke();
+
+                        // 收入数据点
+                        for (let i = 0; i < drawCount && i < points.length; i++) {
+                            drawCircle(ctx, points[i].x, points[i].y, 5, COLORS.accent, '#0D1525', 2);
+                        }
+
+                        // 支出线
+                        ctx.beginPath();
+                        ctx.moveTo(pointsExpense[0].x, pointsExpense[0].y);
+                        for (let i = 1; i < drawCount && i < pointsExpense.length; i++) {
+                            const prev = pointsExpense[i - 1];
+                            const cur = pointsExpense[i];
+                            const midX = (prev.x + cur.x) / 2;
+                            ctx.bezierCurveTo(midX, prev.y, midX, cur.y, cur.x, cur.y);
+                        }
+                        ctx.strokeStyle = COLORS.danger;
+                        ctx.lineWidth = 3;
+                        ctx.lineJoin = 'round';
+                        ctx.lineCap = 'round';
+                        ctx.stroke();
+
+                        for (let i = 0; i < drawCount && i < pointsExpense.length; i++) {
+                            drawCircle(ctx, pointsExpense[i].x, pointsExpense[i].y, 5, COLORS.danger, '#0D1525', 2);
+                        }
+                        ctx.restore();
+
+                        // X轴标签
+                        const labelP = getEasedProgress(10700, 11200, ms, easeOutCubic);
+                        if (labelP > 0) {
+                            ctx.save();
+                            ctx.globalAlpha = labelP;
+                            chartData.forEach((d, idx) => {
+                                const px = chartX0 + (chartW / (chartData.length - 1)) * idx;
+                                drawText(ctx, d.month, px, chartY1 + 20, 10, COLORS.textMuted, 'center', 'middle',
+                                    '400', 0);
+                            });
+                            ctx.restore();
+                        }
+                    }
+
+                    // 图例
+                    const legendP = getEasedProgress(11200, 11600, ms, easeOutCubic);
+                    if (legendP > 0) {
+                        ctx.save();
+                        ctx.globalAlpha = legendP;
+                        drawCircle(ctx, screenX + 60, screenY + 310, 5, COLORS.accent, null);
+                        drawText(ctx, '收入', screenX + 72, screenY + 310, 12, COLORS.textSecondary, 'left', 'middle', '400',
+                            0);
+                        drawCircle(ctx, screenX + 130, screenY + 310, 5, COLORS.danger, null);
+                        drawText(ctx, '支出', screenX + 142, screenY + 310, 12, COLORS.textSecondary, 'left', 'middle', '400',
+                            0);
+                        ctx.restore();
+                    }
+
+                    // 智能提示标签
+                    const smartP = getEasedProgress(11400, 11800, ms, easeOutBack);
+                    if (smartP > 0) {
+                        ctx.save();
+                        ctx.globalAlpha = smartP;
+                        const tipY = screenY + 370;
+                        const tipScale = 0.9 + 0.1 * smartP;
+                        ctx.translate(screenX + screenW / 2, tipY + 40);
+                        ctx.scale(tipScale, tipScale);
+                        ctx.translate(-(screenX + screenW / 2), -(tipY + 40));
+                        drawRoundRect(ctx, screenX + 30, tipY, screenW - 60, 70, 14);
+                        ctx.fillStyle = 'rgba(139,92,246,0.15)';
+                        ctx.fill();
+                        ctx.strokeStyle = 'rgba(139,92,246,0.4)';
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+                        drawText(ctx, '💡', screenX + 52, tipY + 35, 20, null, 'left', 'middle', '400', 0);
+                        drawText(ctx, '本月收入较上月增长 11%', screenX + 82, tipY + 28, 14, COLORS.textPrimary, 'left',
+                            'middle', '600', 1);
+                        drawText(ctx, '消费结构更健康，继续保持！', screenX + 82, tipY + 52, 12, COLORS.textSecondary, 'left',
+                            'middle', '300', 0);
+                        ctx.restore();
+                    }
+
+                    ctx.restore();
+                    ctx.restore();
+                }
+            }
+
+            // ==================== 场景6: 结束画面 (12500-15000ms) ====================
+            function drawScene6End(ms) {
+                const cx = W / 2;
+                const cy = H / 2;
+
+                // 淡出之前的手机
+                // 整体背景变暗
+                const bgFadeP = getEasedProgress(12500, 12800, ms, easeInQuad);
+                if (bgFadeP > 0) {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(8,10,18,' + (bgFadeP * 0.7) + ')';
+                    ctx.fillRect(0, 0, W, H);
+                    ctx.restore();
+                }
+
+                // Logo重新出现 (12800-13500ms)
+                const logoScale = scaleIn(12800, 13400, ms, easeOutBack);
+                const logoAlpha = fadeIn(12800, 13100, ms);
+
+                if (logoAlpha > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = logoAlpha;
+                    ctx.translate(cx, cy - 80);
+                    ctx.scale(logoScale, logoScale);
+
+                    const logoR = 120;
+                    const ringGrad = ctx.createLinearGradient(-logoR, -logoR, logoR, logoR);
+                    ringGrad.addColorStop(0, COLORS.primaryLight);
+                    ringGrad.addColorStop(0.5, COLORS.primary);
+                    ringGrad.addColorStop(1, COLORS.primaryDark);
+                    drawCircle(ctx, 0, 0, logoR, ringGrad, null);
+
+                    const innerR = 95;
+                    const innerGrad = ctx.createRadialGradient(0, -20, 10, 0, 0, innerR);
+                    innerGrad.addColorStop(0, '#1E2A4D');
+                    innerGrad.addColorStop(1, '#0F1A2F');
+                    drawCircle(ctx, 0, 0, innerR, innerGrad, COLORS.cardBorder, 2);
+
+                    ctx.fillStyle = COLORS.gold;
+                    ctx.font = '700 78px system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('¥', 0, 4);
+                    ctx.restore();
+                }
+
+                // 品牌名称 (13200-14000ms)
+                const nameAlpha = fadeIn(13200, 13800, ms);
+                const nameY = slideInY(13200, 13800, ms, cy + 100, cy + 120, easeOutCubic);
+                if (nameAlpha > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = nameAlpha;
+                    drawText(ctx, '记一笔', cx, nameY, 56, COLORS.textPrimary, 'center', 'middle', '700', 3);
+                    drawText(ctx, '记录每一笔，掌控每一天', cx, nameY + 60, 26, COLORS.textSecondary, 'center', 'middle', '300',
+                        5);
+                    ctx.restore();
+                }
+
+                // Slogan (13600-14400ms)
+                const sloganP = getEasedProgress(13600, 14200, ms, easeOutCubic);
+                if (sloganP > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = sloganP;
+                    const sloganY = cy + 210;
+                    const sloganText = '简单记账 · 智慧生活';
+                    const letters = sloganText.split('');
+                    const totalWidth = letters.length * 28;
+                    let startX = cx - totalWidth / 2;
+                    letters.forEach((ch, idx) => {
+                        const charP = getEasedProgress(13600 + idx * 80, 13700 + idx * 80 + 300, ms,
+                            easeOutBack);
+                        if (charP <= 0) return;
+                        const charX = startX + idx * 28;
+                        const charY = sloganY + (1 - charP) * 20;
+                        const charAlpha = charP;
+                        ctx.save();
+                        ctx.globalAlpha = charAlpha;
+                        ctx.fillStyle = COLORS.gold;
+                        ctx.font = '600 24px system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(ch, charX, charY);
+                        ctx.restore();
+                    });
+                    ctx.restore();
+                }
+
+                // 下载按钮 (13800-14600ms)
+                const btnP = getEasedProgress(13800, 14300, ms, easeOutBack);
+                if (btnP > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = btnP;
+                    const btnW = 260;
+                    const btnH = 58;
+                    const btnX = cx - btnW / 2;
+                    const btnY = cy + 280;
+                    const btnScale = 0.8 + 0.2 * btnP;
+                    ctx.translate(cx, btnY + btnH / 2);
+                    ctx.scale(btnScale, btnScale);
+                    ctx.translate(-cx, -(btnY + btnH / 2));
+
+                    const btnGrad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY + btnH);
+                    btnGrad.addColorStop(0, COLORS.primary);
+                    btnGrad.addColorStop(1, COLORS.primaryLight);
+                    drawRoundRect(ctx, btnX, btnY, btnW, btnH, 29);
+                    ctx.fillStyle = btnGrad;
+                    ctx.fill();
+                    ctx.shadowColor = 'rgba(74,144,217,0.5)';
+                    ctx.shadowBlur = 24;
+                    ctx.fill();
+                    ctx.shadowColor = 'transparent';
+                    drawText(ctx, '立即下载', btnX + btnW / 2, btnY + btnH / 2, 22, '#FFF', 'center', 'middle', '700',
+                        3);
+                    ctx.restore();
+                }
+
+                // 底部小字 (14000-14800ms)
+                const footerAlpha = fadeIn(14000, 14500, ms);
+                if (footerAlpha > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = footerAlpha;
+                    drawText(ctx, 'iOS · Android 均已上架', cx, cy + 380, 18, 'rgba(255,255,255,0.5)', 'center', 'middle',
+                        '400', 3);
+                    ctx.restore();
+                }
+
+                // 最终光晕
+                const finalGlow = getEasedProgress(14200, 14900, ms, easeOutExpo);
+                if (finalGlow > 0) {
+                    const glow = ctx.createRadialGradient(cx, cy - 50, 0, cx, cy - 50, 300 + finalGlow * 200);
+                    glow.addColorStop(0, 'rgba(74,144,217,' + (0.12 * finalGlow) + ')');
+                    glow.addColorStop(0.5, 'rgba(74,144,217,' + (0.04 * finalGlow) + ')');
+                    glow.addColorStop(1, 'rgba(74,144,217,0)');
+                    ctx.fillStyle = glow;
+                    ctx.fillRect(0, 0, W, H);
+                }
+            }
+
+            // ==================== __seek 方法 ====================
+            window.__seek = function(ms) {
+                const targetMs = clamp(parseFloat(ms) || 0, 0, DURATION);
+                currentTime = targetMs;
+                isPlaying = false;
+                render(currentTime);
+                // 延迟恢复播放
+                setTimeout(() => {
+                    if (!isPlaying) {
+                        isPlaying = true;
+                        lastFrameTime = performance.now();
+                    }
+                }, 500);
+                return targetMs;
+            };
+
+            // ==================== 自动播放循环 ====================
+            function animationLoop(timestamp) {
+                if (!lastFrameTime) {
+                    lastFrameTime = timestamp;
+                }
+                const deltaMs = timestamp - lastFrameTime;
+                lastFrameTime = timestamp;
+
+                if (isPlaying) {
+                    currentTime += deltaMs;
+                    if (currentTime >= DURATION) {
+                        currentTime = DURATION;
+                        isPlaying = false;
+                        // 动画结束后停住
+                    }
+                    render(currentTime);
+                }
+                requestAnimationFrame(animationLoop);
+            }
+
+            // ==================== 初始化 ====================
+            function init() {
+                currentTime = 0;
+                isPlaying = true;
+                lastFrameTime = 0;
+                render(0);
+                requestAnimationFrame(animationLoop);
+                console.log('记一笔 - 15秒宣传动效已启动');
+                console.log('可用 window.__seek(ms) 跳转到指定时间点');
+            }
+
+            // 启动
+            init();
+
+            // 键盘交互
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'ArrowRight') {
+                    window.__seek(currentTime + 500);
+                } else if (e.key === 'ArrowLeft') {
+                    window.__seek(currentTime - 500);
+                } else if (e.key === ' ') {
+                    e.preventDefault();
+                    if (currentTime >= DURATION) {
+                        currentTime = 0;
+                        isPlaying = true;
+                        lastFrameTime = performance.now();
+                    } else {
+                        isPlaying = !isPlaying;
+                        if (isPlaying) lastFrameTime = performance.now();
+                    }
+                } else if (e.key === 'r' || e.key === 'R') {
+                    window.__seek(0);
+                }
+            });
+
+            // 鼠标点击画布循环播放
+            canvas.addEventListener('click', function() {
+                if (currentTime >= DURATION) {
+                    currentTime = 0;
+                    isPlaying = true;
+                    lastFrameTime = performance.now();
+                } else {
+                    isPlaying = !isPlaying;
+                    if (isPlaying) lastFrameTime = performance.now();
+                }
+            });
+
+            // 打印时间线信息
+            console.log('⏱️ 时间线：');
+            console.log('  0-2s: 品牌开场');
+            console.log('  2-4.5s: 账单列表展示');
+            console.log('  4.5-7s: 添加记账演示');
+            console.log('  7-10s: 统计图表');
+            console.log('  10-12.5s: 趋势分析');
+            console.log('  12.5-15s: 结束画面');
+        })();
+    </script>
+</body>
+</html>
