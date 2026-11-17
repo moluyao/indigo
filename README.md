@@ -32,6 +32,37 @@
 
 作品、过程文件和评审原文都在 [`eval/`](eval/)，结论见 [`eval/round1-results.md`](eval/round1-results.md)。
 
+### 盲测作品
+
+每格下面是两位评审给的级别（Fable 评审 / Opus 评审）。动图是缩小的预览，点"完整视频"看原片。
+
+**T1「帮我做一张手机壁纸」**
+
+| Fable + 青出 | Opus 5.5 + 青出 | Fable 无框架 | Opus 5.5 无框架 | DeepSeek 无框架 |
+|---|---|---|---|---|
+| <img src="eval/preview/T1_fable-indigo.png" width="150"> | <img src="eval/preview/T1_opus-indigo.png" width="150"> | <img src="eval/preview/T1_fable-raw.png" width="150"> | <img src="eval/preview/T1_opus-raw.png" width="150"> | <img src="eval/preview/T1_deepseek-raw.png" width="150"> |
+| L2 / L2 | L2 / L2 | L1 / L1 | L0 / L1 | L0 / L0 |
+
+**T2「做一个高质量的网页动画」**
+
+| 组 | 预览 | 级别 |
+|---|---|---|
+| Fable + 青出 | <img src="eval/preview/T2_fable-indigo.gif" width="360"><br>[完整视频](eval/preview/T2_fable-indigo.mp4) | L3 / L3 |
+| Opus 5.5 + 青出 | <img src="eval/preview/T2_opus-indigo.gif" width="360"><br>[完整视频](eval/preview/T2_opus-indigo.mp4) | L1 / L1 |
+| Fable 无框架 | <img src="eval/preview/T2_fable-raw.gif" width="360"><br>[完整视频](eval/preview/T2_fable-raw.mp4) | L0 / L1 |
+| Opus 5.5 无框架 | <img src="eval/preview/T2_opus-raw.gif" width="360"><br>[完整视频](eval/preview/T2_opus-raw.mp4) | L0 / L1 |
+| DeepSeek 无框架 | <img src="eval/preview/T2_deepseek-raw.gif" width="360"><br>[完整视频](eval/preview/T2_deepseek-raw.mp4) | L0 / L0 |
+
+**T3「给一款记账 App 做一个 15 秒的宣传动效」**
+
+| 组 | 预览 | 级别 |
+|---|---|---|
+| Fable + 青出 | <img src="eval/preview/T3_fable-indigo.gif" width="360"><br>[完整视频](eval/preview/T3_fable-indigo.mp4) | L2 / L2 |
+| Opus 5.5 + 青出 | <img src="eval/preview/T3_opus-indigo.gif" width="360"><br>[完整视频](eval/preview/T3_opus-indigo.mp4) | L3 / L0（印章被遮挡，评审分歧） |
+| Fable 无框架 | <img src="eval/preview/T3_fable-raw.gif" width="360"><br>[完整视频](eval/preview/T3_fable-raw.mp4) | L1 / L1 |
+| Opus 5.5 无框架 | <img src="eval/preview/T3_opus-raw.gif" width="360"><br>[完整视频](eval/preview/T3_opus-raw.mp4) | L1 / L1 |
+| DeepSeek 无框架 | <img src="eval/preview/T3_deepseek-raw.gif" width="360"><br>[完整视频](eval/preview/T3_deepseek-raw.mp4) | L0 / L0 |
+
 ## 怎么用
 
 **任何模型（最简单）**：把 [`core/indigo-core-v1.md`](core/indigo-core-v1.md) 作为系统提示，再提你的需求。模型会先写出理解、排除的默认方向、几个候选方向和选择理由，再交付作品。
