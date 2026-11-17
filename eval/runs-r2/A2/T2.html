@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>什么是复利 · 20 秒</title>
+<style>
+  html,body{margin:0;height:100%;background:#151617;overflow:hidden}
+  #stage{position:absolute;left:0;top:0;width:1920px;height:1080px;background:#e8e9e4;overflow:hidden;transform-origin:0 0;
+    font-family:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Heiti SC",sans-serif;
+    color:#1c1e21;font-variant-numeric:tabular-nums}
+  .b{position:absolute;left:0;top:0;will-change:transform}
+  .ln{position:absolute;left:140px;white-space:nowrap;font-weight:700;line-height:1}
+  .in{position:absolute;left:0;right:0;text-align:center;font-weight:700;white-space:nowrap}
+  svg{position:absolute;left:0;top:0}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="b" id="ground" style="left:700px;top:900px;width:860px;height:3px;background:#1c1e21"></div>
+  <div class="ln" id="year" style="top:260px;font-size:60px;color:#55585c"></div>
+  <svg id="ov" width="1920" height="1080" viewBox="0 0 1920 1080">
+    <path id="arc" d="M1374 270 C1436 270 1436 177 1380 177" fill="none" stroke="#d9311f" stroke-width="5" stroke-linecap="round" pathLength="1" stroke-dasharray="1 1"/>
+    <line id="dash" x1="780" y1="600" x2="780" y2="600" stroke="#1c1e21" stroke-width="3" stroke-dasharray="12 9"/>
+    <path id="brk" d="" fill="none" stroke="#d9311f" stroke-width="5" pathLength="1" stroke-dasharray="1 1"/>
+  </svg>
+</div>
+<script>
+(function(){
+  var DUR = 20000;
+  var stage = document.getElementById('stage');
+  function fit(){
+    var k = Math.min(innerWidth/1920, innerHeight/1080);
+    stage.style.transform = 'translate(' + ((innerWidth-1920*k)/2) + 'px,' + ((innerHeight-1080*k)/2) + 'px) scale(' + k + ')';
+  }
+  addEventListener('resize', fit); fit();
+
+  // ---------- 缓动 ----------
+  function bez(x1,y1,x2,y2){
+    function X(t){return 3*x1*t*(1-t)*(1-t)+3*x2*t*t*(1-t)+t*t*t;}
+    function Y(t){return 3*y1*t*(1-t)*(1-t)+3*y2*t*t*(1-t)+t*t*t;}
+    return function(x){
+      if (x<=0) return 0; if (x>=1) return 1;
+      var lo=0, hi=1, m=0;
+      for (var i=0;i<24;i++){ m=(lo+hi)/2; if (X(m)<x) lo=m; else hi=m; }
+      return Y((lo+hi)/2);
+    };
+  }
+  var dock  = bez(.31,.69,.64,1);   // 停靠
+  var sink  = bez(.53,0,.67,1);     // 沉入
+  var pull  = bez(.36,0,.69,.31);   // 抽离
+  var carry = bez(.45,0,.55,1);     // 搬运
+  function seg(t,a,b){ return t<=a?0:(t>=b?1:(t-a)/(b-a)); }
+
+  // ---------- 元素 ----------
+  var C = {ink:'#1c1e21', grey:'#a3a59f', red:'#d9311f', bg:'#e8e9e4'};
+  function mk(css, html){
+    var d = document.createElement('div'); d.className = 'b';
+    d.style.cssText += css; if (html!=null) d.innerHTML = html;
+    stage.insertBefore(d, document.getElementById('ov')); return d;
+  }
+  function inner(parent, txt, size, color){
+    var s = document.createElement('div'); s.className='in';
+    s.style.fontSize = size+'px'; s.style.color = color; s.textContent = txt;
+    parent.appendChild(s); return s;
+  }
+  var G = 900, CX = 1130, SX = 780, CW = 240;
+
+  var cP = mk('background:'+C.ink+';width:'+CW+'px');
+  var cPL = inner(cP, '本金 100', 36, C.bg);
+  var cG = mk('background:'+C.grey+';width:'+CW+'px');
+  var cR = mk('background:'+C.red+';width:'+CW+'px');
+  var g1 = mk('background:'+C.grey+';width:'+CW+'px');
+  var g1L = inner(g1, '+10', 36, C.ink);
+  var g2 = mk('background:'+C.grey+';width:'+CW+'px');
+  var g2L = inner(g2, '+10', 36, C.ink);
+  var r2 = mk('background:'+C.red+';width:'+CW+'px');
+  var sP = mk('background:'+C.ink+';width:'+CW+'px');
+  var sPL = inner(sP, '本金 100', 36, C.bg);
+  var sG = mk('background:'+C.grey+';width:'+CW+'px');
+
+  var plus1 = mk('font-size:52px;font-weight:700;color:'+C.red+';line-height:1', '+1');
+  var cTot = mk('width:'+CW+'px;text-align:center;font-size:52px;font-weight:700;line-height:1');
+  var sTot = mk('width:'+CW+'px;text-align:center;font-size:52px;font-weight:700;line-height:1');
+  var cLab = mk('width:'+CW+'px;text-align:center;font-size:44px;font-weight:700;line-height:1', '复利');
+  var sLab = mk('width:'+CW+'px;text-align:center;font-size:44px;font-weight:700;line-height:1', '单利');
+  var ann1 = mk('font-size:52px;font-weight:700;line-height:1;white-space:nowrap', '多出的 373 元');
+  var ann2 = mk('font-size:40px;font-weight:700;line-height:1;white-space:nowrap', '全是利息生的利息');
+
+  var arc = document.getElementById('arc'), dash = document.getElementById('dash'), brk = document.getElementById('brk');
+  var yearEl = document.getElementById('year');
+
+  var LINES = [
+    {t:'存 100 元，',            i:-1,   o:2.2,  y:400, s:64},
+    {t:'每年利息 10%（假设）。', i:-1,   o:2.2,  y:490, s:64},
+    {t:'100 元生出 10 元利息。', i:2.3,  o:5.0,  y:400, s:64},
+    {t:'本金又生了 10 元，',     i:5.1,  o:9.2,  y:400, s:64},
+    {t:'去年那 10 元利息，',     i:6.4,  o:9.2,  y:490, s:64},
+    {t:'也生了 1 元。',          i:6.55, o:9.2,  y:580, s:64},
+    {t:'这 1 元就是复利：',      i:9.4,  o:11.9, y:400, s:64},
+    {t:'利息生的利息。',         i:9.55, o:11.9, y:490, s:64},
+    {t:'单利：只有本金生利息。', i:12.7, o:99,   y:400, s:48},
+    {t:'复利：利息也生利息。',   i:12.85,o:99,   y:470, s:48}
+  ];
+  LINES.forEach(function(L){
+    var d = document.createElement('div'); d.className='ln';
+    d.style.top = L.y+'px'; d.style.fontSize = L.s+'px'; d.textContent = L.t;
+    stage.appendChild(d); L.el = d;
+  });
+
+  // 逐年生长：第 3–20 年，每步时长 ×0.93（加速）
+  var T0 = 12.9, STEPS = [], acc = T0;
+  for (var i=0;i<18;i++){ var d = 0.34*Math.pow(0.93,i); STEPS.push({a:acc, d:d}); acc += d; }
+  function yearVal(t){
+    if (t < T0) return 2;
+    for (var i=0;i<STEPS.length;i++){
+      var S = STEPS[i];
+      if (t < S.a + S.d) return 2 + i + dock(seg(t, S.a, S.a + Math.min(0.26, S.d*0.85)));
+    }
+    return 20;
+  }
+  function P(y){ var n=Math.floor(y), f=y-n; var a=100*Math.pow(1.1,n), b=100*Math.pow(1.1,n+1); return a+(b-a)*f; }
+
+  function box(el,x,y,w,h,op){
+    el.style.transform = 'translate('+x+'px,'+y+'px)';
+    if (h!=null) el.style.height = Math.max(0,h)+'px';
+    if (w!=null) el.style.width = w+'px';
+    el.style.opacity = op;
+    el.style.display = op<=0 ? 'none' : 'block';
+  }
+  function center(lab, h){ lab.style.top = (h/2 - 18)+'px'; lab.style.display = h>44 ? 'block':'none'; }
+
+  // ---------- 渲染：只依赖 ms ----------
+  function render(ms){
+    var t = ms/1000;
+
+    // 比例尺：6 px/元 → 1 px/元，指数插值
+    var zp = carry(seg(t,11.6,12.6));
+    var s = 6*Math.pow(1/6, zp);
+    var C2 = t >= 11.6;
+
+    // 年份
+    var yv = yearVal(t);
+    var yr = t<2.0 ? 0 : (t<5.0 ? 1 : Math.round(yv));
+    yearEl.textContent = '第 ' + yr + ' 年';
+
+    // 本金
+    box(cP, CX, G-100*s, null, 100*s, 1); center(cPL, 100*s);
+
+    // A/B：单块落下
+    if (!C2){
+      var p1 = seg(t,1.6,2.1), p2 = seg(t,4.6,5.1), p3 = seg(t,5.5,5.95);
+      var o1 = -(1-sink(p1))*170, o2 = -(1-sink(p2))*170;
+      box(g1, CX, G-110*s+o1, null, 10*s-2, t<1.6?0:Math.min(1,p1*3)); center(g1L, 10*s-2);
+      box(g2, CX, G-120*s+o2, null, 10*s-2, t<4.6?0:Math.min(1,p2*3)); center(g2L, 10*s-2);
+      var o3 = p3<0.75 ? -(1-sink(p3/0.75))*120 : -8*Math.sin(Math.PI*(p3-0.75)/0.25);
+      box(r2, CX, G-121*s+o3, null, 1*s, t<5.5?0:Math.min(1,p3*3));
+      box(cG, CX, 0, null, 0, 0); box(cR, CX, 0, null, 0, 0);
+    } else {
+      box(g1,0,0,null,0,0); box(g2,0,0,null,0,0); box(r2,0,0,null,0,0);
+      var Gv = 10*yv, Pv = P(yv), Rv = Pv-100-Gv;
+      box(cG, CX, G-(100+Gv)*s, null, Gv*s, 1);
+      box(cR, CX, G-Pv*s, null, Rv*s, 1);
+    }
+
+    // "+1" 与红色引线（第 2 年）
+    var ap = seg(t,6.0,6.45), lp = dock(seg(t,6.1,6.5)), fo = pull(seg(t,11.6,11.9));
+    arc.setAttribute('stroke-dashoffset', 1-ap);
+    arc.style.opacity = (t<6.0?0:1)*(1-fo);
+    box(plus1, 1452 + (1-lp)*24, 151, null, null, lp*(1-fo));
+
+    // 单利柱
+    var k = dock(seg(t,12.2,12.8));
+    var yv2 = C2 ? yv : 2, Gs = 10*yv2;
+    box(sP, SX, G-100*s*k, null, 100*s*k, k>0?1:0); center(sPL, 100*s*k);
+    box(sG, SX, G-(100+Gs)*s*k, null, Gs*s*k, k>0?1:0);
+
+    // 顶部总额
+    var tp = dock(seg(t,11.9,12.3));
+    var Pv2 = C2 ? P(yv) : 121;
+    cTot.textContent = Math.round(Pv2);
+    box(cTot, CX, G-Pv2*s-74 + (1-tp)*20, null, null, tp);
+    sTot.textContent = Math.round(100+Gs);
+    box(sTot, SX, G-(100+Gs)*s*k-74, null, null, k);
+
+    // 底部标签
+    var lb = dock(seg(t,12.3,12.7));
+    box(sLab, SX, 930 + (1-k)*20, null, null, k);
+    box(cLab, CX, 930 + (1-lb)*20, null, null, lb);
+
+    // D：虚线对齐 + 括线 + 标注
+    var dp = carry(seg(t,16.5,16.9));
+    dash.setAttribute('y1', G-300*s); dash.setAttribute('y2', G-300*s);
+    dash.setAttribute('x2', 780 + 590*dp);
+    dash.style.opacity = t<16.5?0:1;
+    var bp = seg(t,16.7,17.1);
+    var yTop = G-P(yv)*s, yBot = G-(100+10*yv)*s;
+    brk.setAttribute('d', 'M1380 '+yTop+' H1394 V'+yBot+' H1380');
+    brk.setAttribute('stroke-dashoffset', 1-bp);
+    brk.style.opacity = t<16.7?0:1;
+    var a1 = dock(seg(t,16.8,17.2)), a2 = dock(seg(t,16.95,17.35));
+    box(ann1, 1424, 360 + (1-a1)*28, null, null, a1);
+    box(ann2, 1424, 432 + (1-a2)*28, null, null, a2);
+
+    // 左侧字幕
+    LINES.forEach(function(L){
+      var pi = L.i<0 ? 1 : dock(seg(t, L.i, L.i+0.4));
+      var po = pull(seg(t, L.o, L.o+0.25));
+      var op = pi*(1-po);
+      L.el.style.opacity = op;
+      L.el.style.display = op<=0 ? 'none':'block';
+      L.el.style.transform = 'translateY(' + ((1-pi)*28 - po*16) + 'px)';
+    });
+  }
+
+  // ---------- 播放与 seek ----------
+  var seeking = false, start = null;
+  function loop(now){
+    if (seeking) return;
+    if (start === null) start = now;
+    var ms = Math.min(DUR, now - start);
+    render(ms);
+    if (ms < DUR) requestAnimationFrame(loop);
+  }
+  window.__seek = function(ms){
+    seeking = true;
+    render(Math.max(0, Math.min(DUR, +ms || 0)));
+  };
+  render(0);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

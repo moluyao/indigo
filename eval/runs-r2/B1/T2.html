@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>20 秒看懂复利</title>
+<style>
+  html,body{margin:0;padding:0;background:#111;overflow:hidden;width:100%;height:100%;}
+  canvas{position:absolute;left:0;top:0;display:block;}
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function(){
+  var cv=document.getElementById('c'), ctx=cv.getContext('2d');
+  var W=1920, H=1080, DUR=20000;
+  var C={bg:'#f6f0e4', ink:'#1e2330', mute:'#8b8f98', line:'#d9d0bd', simple:'#7c8aa0',
+         comp:'#e9541f', gold:'#f2ac12', card:'#ece4d3'};
+  var FONT='"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Hiragino Sans GB",sans-serif';
+  function F(w,s){return w+' '+s+'px '+FONT;}
+  function clamp(x,a,b){a=a===undefined?0:a;b=b===undefined?1:b;return Math.min(b,Math.max(a,x));}
+  function P(t,a,b){return clamp((t-a)/(b-a));}
+  function eo(x){return 1-Math.pow(1-x,3);}
+  function eio(x){return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;}
+  function eback(x){var c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2);}
+  function lerp(a,b,x){return a+(b-a)*x;}
+  function fmt(n){n=Math.round(n);return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+  function wan(n){return (n/10000).toFixed(1)+'万';}
+
+  var SA=1; // scene alpha
+  function txt(s,x,y,font,color,align,a){
+    ctx.save();ctx.globalAlpha=SA*(a===undefined?1:a);ctx.font=font;ctx.fillStyle=color;
+    ctx.textAlign=align||'center';ctx.textBaseline='alphabetic';ctx.fillText(s,x,y);ctx.restore();
+  }
+  // rich text: segs=[[text,color],...], centered at x
+  function rich(segs,x,y,font,a,align){
+    ctx.save();ctx.font=font;
+    var w=0;segs.forEach(function(s){w+=ctx.measureText(s[0]).width;});
+    var cx=align==='left'?x:x-w/2;
+    ctx.globalAlpha=SA*(a===undefined?1:a);ctx.textBaseline='alphabetic';ctx.textAlign='left';
+    segs.forEach(function(s){ctx.fillStyle=s[1];ctx.fillText(s[0],cx,y);cx+=ctx.measureText(s[0]).width;});
+    ctx.restore();return w;
+  }
+  function rrect(x,y,w,h,r,fill,a){
+    ctx.save();ctx.globalAlpha=SA*(a===undefined?1:a);ctx.fillStyle=fill;ctx.beginPath();
+    r=Math.min(r,h/2,w/2);
+    ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();ctx.fill();ctx.restore();
+  }
+
+  // ---------- Scene A: 0 – 3.8s  什么是复利 ----------
+  function sceneA(t){
+    SA=1-P(t,3.3,3.8); if(SA<=0)return;
+    var lift=-30*eio(P(t,3.3,3.8));
+    var a1=eo(P(t,0.1,0.6));
+    rrect(960-110,190+lift,220,56,28,C.ink,a1);
+    txt('20 秒看懂',960,228+lift,F(600,28),C.bg,'center',a1);
+    var a2=eo(P(t,0.25,0.95));
+    txt('复利',960,470+lift+40*(1-a2),F(900,230),C.ink,'center',a2);
+    var a3=eo(P(t,0.8,1.4));
+    rich([['就是：',C.mute],['利息',C.comp],['也会再生出',C.ink],['利息',C.comp]],960,600+lift+20*(1-a3),F(700,64),a3);
+    var a4=eo(P(t,1.6,2.2));
+    var s=lerp(0.92,1,eback(P(t,1.6,2.2)));
+    ctx.save();ctx.translate(960,800+lift);ctx.scale(s,s);
+    rrect(-470,-62,940,124,62,C.card,a4);
+    rich([['假设：存入 ',C.ink],['10,000 元',C.comp],['，年利率 ',C.ink],['10%',C.comp]],0,16,F(700,46),a4);
+    ctx.restore();
+  }
+
+  // ---------- Scene B: 3.6 – 9.5s  每年拿多少利息 ----------
+  var BT=[4.2,5.6,7.0];
+  function sceneB(t){
+    SA=P(t,3.6,4.1)*(1-P(t,9.0,9.5)); if(SA<=0)return;
+    var lift=-30*eio(P(t,9.0,9.5));
+    ctx.save();ctx.translate(0,lift);
+    txt('每一年，能拿到多少利息？',960,150,F(800,56),C.ink);
+    var panels=[{cx:560,name:'单利',sub:'每年只按本金 10,000 算',col:C.simple,vals:[1000,1000,1000],extra:[0,0,0]},
+                {cx:1360,name:'复利',sub:'本金 + 攒下的利息，一起算',col:C.comp,vals:[1000,1100,1210],extra:[0,100,210]}];
+    var BASE=740, SC=0.3, BW=130;
+    panels.forEach(function(p,pi){
+      txt(p.name,p.cx,255,F(900,56),p.col);
+      txt(p.sub,p.cx,305,F(500,28),C.mute);
+      // baseline
+      ctx.save();ctx.globalAlpha=SA;ctx.fillStyle=C.ink;ctx.fillRect(p.cx-290,BASE,580,4);ctx.restore();
+      for(var k=0;k<3;k++){
+        var x=p.cx+(k-1)*190-BW/2;
+        var g=eo(P(t,BT[k],BT[k]+0.6));
+        var h1=1000*SC*g;
+        txt('第'+(k+1)+'年',x+BW/2,792,F(600,28),C.mute,'center',P(t,BT[k]-0.2,BT[k]+0.2));
+        if(g<=0)continue;
+        rrect(x,BASE-h1,BW,h1,0,p.col,1);
+        var ex=p.extra[k]*SC*eo(P(t,BT[k]+0.45,BT[k]+0.95));
+        if(ex>0){
+          rrect(x,BASE-h1-ex,BW,ex,0,C.gold,1);
+          // stripes on gold to stand out
+        }
+        var la=P(t,BT[k]+0.3,BT[k]+0.7);
+        var shown=p.extra[k]?1000+p.extra[k]*eo(P(t,BT[k]+0.45,BT[k]+0.95)):1000;
+        txt('+'+fmt(shown),x+BW/2,BASE-h1-ex-18,F(800,36),pi?C.comp:C.ink,'center',la);
+      }
+      // totals
+      var ta=eo(P(t,8.2,8.7));
+      var total=pi?13310:13000;
+      rich([['3 年后共 ',C.ink],[fmt(total),p.col],[' 元',C.ink]],p.cx,870,F(700,40),ta);
+    });
+    // legend for gold
+    var la2=eo(P(t,6.2,6.7));
+    rrect(1640,560,30,30,4,C.gold,la2);
+    txt('金色 =',1690,584,F(700,28),C.ink,'left',la2);
+    txt('利息生出的利息',1640,626,F(700,28),C.ink,'left',la2);
+    ctx.restore();
+
+    // caption
+    var caps=[[4.0,[['第 1 年：10,000 × 10% = ',C.ink],['1,000',C.comp],['，两边一样',C.ink]]],
+              [5.6,[['第 2 年：复利按 11,000 算 → ',C.ink],['1,100',C.comp],['，多出的 100 是利息生的',C.ink]]],
+              [7.0,[['第 3 年：复利按 12,100 算 → ',C.ink],['1,210',C.comp],['，差距在变大',C.ink]]],
+              [8.4,[['短期看，只差 310 元……',C.ink],['可要是时间拉长呢？',C.comp]]]];
+    for(var i=caps.length-1;i>=0;i--){
+      if(t>=caps[i][0]){
+        var ca=eo(P(t,caps[i][0],caps[i][0]+0.3));
+        var nxt=i<caps.length-1?caps[i+1][0]:99;
+        ca*=1-P(t,nxt-0.15,nxt);
+        rich(caps[i][1],960,985+lift+12*(1-ca),F(700,42),ca);
+        if(i>0){ // previous caption fading out
+          var pa=1-P(t,caps[i][0]-0.15,caps[i][0]);
+          if(pa>0)rich(caps[i-1][1],960,985+lift,F(700,42),pa);
+        }
+        break;
+      }
+    }
+  }
+
+  // ---------- Scene C: 9.4 – 16s  30 年曲线 ----------
+  var L=240,R=1330,T=230,B=880,YMAX=180000;
+  function px(y){return L+(R-L)*y/30;}
+  function py(v){return B-(B-T)*v/YMAX;}
+  function comp(y){return 10000*Math.pow(1.1,y);}
+  function simp(y){return 10000+1000*y;}
+  function sceneC(t){
+    SA=P(t,9.4,9.9)*(1-P(t,15.5,16.0)); if(SA<=0)return;
+    txt('把时间拉长到 30 年',L,140,F(800,56),C.ink,'left');
+    // grid
+    ctx.save();ctx.globalAlpha=SA;
+    [50000,100000,150000].forEach(function(v){
+      ctx.fillStyle=C.line;ctx.fillRect(L,py(v)-1,R-L,2);
+    });
+    ctx.fillStyle=C.ink;ctx.fillRect(L,B,R-L+10,4);ctx.fillRect(L-2,T-20,4,B-T+24);
+    ctx.restore();
+    [[0,'0'],[50000,'5万'],[100000,'10万'],[150000,'15万']].forEach(function(g){
+      txt(g[1],L-20,py(g[0])+9,F(500,26),C.mute,'right');
+    });
+    for(var yy=0;yy<=30;yy+=5){txt(yy+'',px(yy),B+42,F(500,26),C.mute);}
+    txt('年',R+30,B+42,F(500,26),C.mute,'left');
+
+    var yr=30*eio(P(t,9.9,14.3));
+    // compound area + line
+    ctx.save();ctx.globalAlpha=SA;
+    var steps=Math.max(1,Math.ceil(yr*10));
+    ctx.beginPath();ctx.moveTo(px(0),B);
+    for(var i=0;i<=steps;i++){var y=yr*i/steps;ctx.lineTo(px(y),py(comp(y)));}
+    ctx.lineTo(px(yr),B);ctx.closePath();
+    var gr=ctx.createLinearGradient(0,T,0,B);gr.addColorStop(0,'rgba(233,84,31,0.28)');gr.addColorStop(1,'rgba(233,84,31,0.02)');
+    ctx.fillStyle=gr;ctx.fill();
+    // simple line
+    ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.strokeStyle=C.simple;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(px(0),py(simp(0)));ctx.lineTo(px(yr),py(simp(yr)));ctx.stroke();
+    ctx.strokeStyle=C.comp;ctx.lineWidth=7;ctx.beginPath();
+    for(i=0;i<=steps;i++){var y2=yr*i/steps;if(i===0)ctx.moveTo(px(y2),py(comp(y2)));else ctx.lineTo(px(y2),py(comp(y2)));}
+    ctx.stroke();
+    ctx.restore();
+
+    // doubling markers
+    var dbl=[[7.27,'2万'],[14.55,'4万'],[21.82,'8万'],[29.09,'16万']];
+    dbl.forEach(function(d){
+      if(yr<d[0])return;
+      var a=eo(clamp((yr-d[0])/1.2));
+      var x=px(d[0]),y=py(comp(d[0]));
+      ctx.save();ctx.globalAlpha=SA*a;ctx.fillStyle=C.bg;ctx.strokeStyle=C.comp;ctx.lineWidth=4;
+      ctx.beginPath();ctx.arc(x,y,9,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
+      txt('×2 → '+d[1],x-16,y-22,F(700,26),C.comp,'right',a);
+    });
+    var na=eo(P(t,11.6,12.1));
+    rrect(L+30,T+10,440,64,32,'rgba(233,84,31,0.12)',na);
+    txt('复利：大约每 7 年翻一倍',L+250,T+53,F(700,30),C.comp,'center',na);
+
+    // heads
+    if(yr>0.02){
+      var hs=[[simp(yr),C.simple,34],[comp(yr),C.comp,-22]];
+      hs.forEach(function(h){
+        var x=px(yr),y=py(h[0]);
+        ctx.save();ctx.globalAlpha=SA;ctx.fillStyle=h[1];ctx.beginPath();ctx.arc(x,y,12,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=C.bg;ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fill();ctx.restore();
+        txt(wan(h[0]),x+22,y+h[2]+10,F(800,30),h[1],'left');
+      });
+    }
+
+    // side panel
+    var PX=1500;
+    rrect(PX,260,340,560,24,C.card,1);
+    txt('第 '+Math.floor(yr+0.0001)+' 年',PX+170,350,F(900,64),C.ink);
+    txt('单利',PX+40,440,F(600,28),C.simple,'left');
+    txt(fmt(simp(yr)),PX+300,500,F(800,48),C.simple,'right');
+    txt('复利',PX+40,570,F(600,28),C.comp,'left');
+    txt(fmt(comp(yr)),PX+300,630,F(800,48),C.comp,'right');
+    var ga=eo(P(t,14.3,14.8));
+    ctx.save();ctx.globalAlpha=SA*ga;ctx.fillStyle=C.ink;ctx.fillRect(PX+40,670,260,3);ctx.restore();
+    txt('复利多出',PX+40,720,F(600,28),C.ink,'left',ga);
+    txt(fmt(comp(30)-simp(30)),PX+300,785,F(900,52),C.ink,'right',ga);
+
+    var cap=eo(P(t,14.6,15.0));
+    rich([['同样的本金和利率，30 年后差了 ',C.ink],['4 倍多',C.comp]],960,1000,F(700,42),cap);
+  }
+
+  // ---------- Scene D: 15.9 – 20s  总结 ----------
+  function sceneD(t){
+    SA=P(t,15.9,16.4); if(SA<=0)return;
+    var a0=eo(P(t,15.9,16.5));
+    txt('记住一个公式',960,190-10*(1-a0),F(600,36),C.mute,'center',a0);
+    // formula with superscript
+    var fa=eo(P(t,16.1,16.7));
+    ctx.save();ctx.font=F(900,84);
+    var segs=[['最终金额 = 本金 × (1 + 利率)',C.ink]];
+    var w1=ctx.measureText(segs[0][0]).width;ctx.font=F(900,46);var w2=ctx.measureText('年数').width;ctx.restore();
+    var x0=960-(w1+w2+8)/2, fy=330+16*(1-fa);
+    rich(segs,x0,fy,F(900,84),fa,'left');
+    txt('年数',x0+w1+8,fy-48,F(900,46),C.comp,'left',fa);
+    txt('例：10,000 × 1.1 的 30 次方 ≈ 174,494 元',960,405,F(500,30),C.mute,'center',eo(P(t,16.4,16.9)));
+
+    var cards=[['1','利滚利','利息并入本金，下一年一起生息'],
+               ['2','时间是放大器','前几年差得少，越往后差得越多'],
+               ['3','越早开始越好','早几年开始，结果可能差很多']];
+    cards.forEach(function(c,i){
+      var st=16.7+i*0.45, a=eo(P(t,st,st+0.5)), cx=380+i*580, y=500+30*(1-a);
+      rrect(cx-260,y,520,210,28,C.card,a);
+      ctx.save();ctx.globalAlpha=SA*a;ctx.fillStyle=i===2?C.comp:C.ink;ctx.beginPath();ctx.arc(cx-200,y+70,30,0,Math.PI*2);ctx.fill();ctx.restore();
+      txt(c[0],cx-200,y+81,F(800,32),C.bg,'center',a);
+      txt(c[1],cx-150,y+84,F(900,42),i===2?C.comp:C.ink,'left',a);
+      txt(c[2],cx-220,y+160,F(500,28),C.ink,'left',a*0.85);
+    });
+    var fa2=eo(P(t,18.2,18.8)), s=lerp(0.94,1,eback(P(t,18.2,18.8)));
+    ctx.save();ctx.translate(960,880);ctx.scale(s,s);
+    rich([['复利：钱生钱，生出来的钱，',C.ink],['还会继续生钱。',C.comp]],0,0,F(900,56),fa2);
+    ctx.restore();
+    txt('* 示例按每年复利一次、固定 10% 计算，仅用于说明原理，不代表真实收益',960,1035,F(400,22),C.mute,'center',eo(P(t,18.6,19.1)));
+  }
+
+  function render(ms){
+    var t=clamp(ms,0,DUR)/1000;
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.globalAlpha=1;ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+    // subtle progress bar
+    ctx.fillStyle=C.line;ctx.fillRect(0,H-8,W,8);
+    ctx.fillStyle=C.comp;ctx.fillRect(0,H-8,W*t/20,8);
+    sceneA(t);sceneB(t);sceneC(t);sceneD(t);
+    SA=1;
+  }
+
+  function fit(){
+    var s=Math.min(window.innerWidth/W,window.innerHeight/H);
+    cv.style.width=(W*s)+'px';cv.style.height=(H*s)+'px';
+    cv.style.left=((window.innerWidth-W*s)/2)+'px';cv.style.top=((window.innerHeight-H*s)/2)+'px';
+  }
+  window.addEventListener('resize',fit);fit();
+
+  var paused=false, start=null;
+  function loop(now){
+    if(paused)return;
+    if(start===null)start=now;
+    var ms=Math.min(DUR,now-start);
+    render(ms);
+    if(ms<DUR)requestAnimationFrame(loop);
+  }
+  window.__seek=function(ms){paused=true;render(Number(ms)||0);};
+  render(0);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

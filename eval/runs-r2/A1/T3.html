@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>山野咖啡 · 开场</title>
+<style>
+  html,body{margin:0;padding:0;background:#E7E9E0;overflow:hidden}
+  canvas{display:block;width:100vw;height:56.25vw;max-height:100vh;max-width:177.78vh;margin:0 auto}
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function(){
+  var cv=document.getElementById('c'), ctx=cv.getContext('2d');
+  var DUR=8000;
+  var PAPER='#E7E9E0', INK='#4B2E1F';
+  var FONT='"PingFang SC","Microsoft YaHei","Noto Sans SC","Source Han Sans SC","Hiragino Sans GB",sans-serif';
+  function clamp(x){return x<0?0:x>1?1:x;}
+  function cb(x1,y1,x2,y2){return function(x){if(x<=0)return 0;if(x>=1)return 1;var lo=0,hi=1,t=x;for(var i=0;i<32;i++){t=(lo+hi)/2;var bx=3*(1-t)*(1-t)*t*x1+3*(1-t)*t*t*x2+t*t*t;if(bx<x)lo=t;else hi=t;}return 3*(1-t)*(1-t)*t*y1+3*(1-t)*t*t*y2+t*t*t;};}
+  var DOCK=cb(.31,.69,.64,1), LEAVE=cb(.36,0,.69,.31), CARRY=cb(.45,0,.55,1), SINK=cb(.53,0,.67,1), PEN=cb(.4,0,.3,1);
+  function rng(s){return function(){s|=0;s=s+0x6D2B79F5|0;var t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  var R=rng(3127);
+
+  // ---- 地形：一座山的等高线，山顶是一颗咖啡豆 ----
+  var ROT=-0.52, cr=Math.cos(ROT), sr=Math.sin(ROT);
+  var HJ=[], j;
+  for(j=2;j<=6;j++) HJ.push({f:j,a:1/Math.pow(j,1.3),p:R()*Math.PI*2});
+  var hn=0; HJ.forEach(function(h){hn+=h.a;});
+  function shared(th){var s=0;for(var i=0;i<HJ.length;i++)s+=HJ[i].a*Math.sin(HJ[i].f*th+HJ[i].p);return s/hn;}
+  var NC=12, N=520, CONT=[];
+  for(var k=0;k<NC;k++){
+    var own=[{f:3,p:R()*6.283},{f:5,p:R()*6.283},{f:7,p:R()*6.283}];
+    var Rk=118+k*46, ratio=0.70+0.012*k, Ak=0.02+0.011*k;
+    var pts=[], len=[0];
+    for(var i=0;i<=N;i++){
+      var th=Math.PI*0.86+i/N*Math.PI*2;            // 每条线从同一侧起笔
+      var o=0; own.forEach(function(q){o+=Math.sin(q.f*th+q.p)/3;});
+      var rr=Rk*(1+Ak*shared(th)+0.007*o);
+      var lx=rr*ratio*Math.cos(th), ly=rr*Math.sin(th);
+      pts.push([lx*cr-ly*sr, lx*sr+ly*cr]);
+      if(i>0){var dx=pts[i][0]-pts[i-1][0], dy=pts[i][1]-pts[i-1][1]; len.push(len[i-1]+Math.sqrt(dx*dx+dy*dy));}
+    }
+    CONT.push({pts:pts,len:len,index:(k%5===1)});     // 计曲线：每 5 条加粗一条（地形图惯例）
+  }
+  // 豆：略呈蛋形的椭圆 + 一道 S 形豆缝
+  var BEAN=[], CREASE=[];
+  for(i=0;i<=200;i++){
+    var th2=-Math.PI/2+i/200*Math.PI*2, bx=56*Math.cos(th2)*(1+0.06*Math.sin(th2)), by=84*Math.sin(th2);
+    BEAN.push([bx*cr-by*sr, bx*sr+by*cr]);
+  }
+  for(i=0;i<=80;i++){
+    var u=-1+i/40, cy2=u*70, cx2=11*Math.sin(u*Math.PI);
+    CREASE.push([cx2*cr-cy2*sr, cx2*sr+cy2*cr]);
+  }
+  function lenOf(p){var L=[0];for(var i=1;i<p.length;i++){var dx=p[i][0]-p[i-1][0],dy=p[i][1]-p[i-1][1];L.push(L[i-1]+Math.sqrt(dx*dx+dy*dy));}return L;}
+  var BEANL=lenOf(BEAN), CREASEL=lenOf(CREASE);
+
+  // 画折线的 [a,b] 段（按长度比例）
+  function path(pts,L,a,b,X,Y,S){
+    if(b<=a) return false;
+    var tot=L[L.length-1], la=a*tot, lb=b*tot, started=false;
+    ctx.beginPath();
+    for(var i=1;i<pts.length;i++){
+      if(L[i]<la) continue;
+      var f0=L[i-1]<la?(la-L[i-1])/(L[i]-L[i-1]):0;
+      if(!started){ctx.moveTo(X+S*(pts[i-1][0]+(pts[i][0]-pts[i-1][0])*f0), Y+S*(pts[i-1][1]+(pts[i][1]-pts[i-1][1])*f0));started=true;}
+      if(L[i]>=lb){var f1=(lb-L[i-1])/(L[i]-L[i-1]);ctx.lineTo(X+S*(pts[i-1][0]+(pts[i][0]-pts[i-1][0])*f1), Y+S*(pts[i-1][1]+(pts[i][1]-pts[i-1][1])*f1));break;}
+      ctx.lineTo(X+S*pts[i][0], Y+S*pts[i][1]);
+    }
+    return started;
+  }
+
+  function camera(T){
+    // 1) 0–3.8 s：从山坡远处一路"往上走"，镜头拉远并移到山顶；指数缩放
+    var p1=CARRY(clamp(T/3.8)), S=2.2*Math.pow(1/2.2,p1), X=1350+(960-1350)*p1, Y=980+(540-980)*p1;
+    // 2) 4.8–5.8 s：成标志尺寸，让出右边给字
+    var p2=CARRY(clamp((T-4.8)/1.0)); S=S*Math.pow(0.62,p2); X=X+(600-960)*p2;
+    // 3) 5.8–8.0 s：极慢的呼吸（< 一次可见位移/注视）
+    S=S*(1+0.012*clamp((T-5.8)/2.2));
+    return {S:S,X:X,Y:Y};
+  }
+
+  function render(ms){
+    var T=Math.max(0,Math.min(DUR,ms))/1000;
+    ctx.fillStyle=PAPER;ctx.fillRect(0,0,1920,1080);
+    var c=camera(T);
+    ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=INK;
+
+    // 等高线：由外向内（由山脚到山顶）一条接一条画出；外圈 6 条在成标时收回
+    for(var k=NC-1;k>=0;k--){
+      var st=-1.8+0.3*(NC-1-k), draw=PEN(clamp((T-st)/1.0));
+      var back=0;
+      if(k>=6){var rt=4.6+0.08*(NC-1-k); back=LEAVE(clamp((T-rt)/0.55));}
+      var C=CONT[k];
+      ctx.lineWidth=C.index?5:2.4;
+      if(path(C.pts,C.len,back,draw,c.X,c.Y,c.S)) ctx.stroke();
+    }
+    // 山顶：豆的轮廓 2.5–3.1，豆缝 3.1–3.6，填墨 3.6–4.0
+    var bo=DOCK(clamp((T-2.5)/0.6));
+    ctx.lineWidth=2.4;
+    if(path(BEAN,BEANL,0,bo,c.X,c.Y,c.S)) ctx.stroke();
+    var cz=PEN(clamp((T-3.1)/0.5));
+    ctx.lineWidth=Math.max(2.4,9*c.S);
+    if(path(CREASE,CREASEL,0,cz,c.X,c.Y,c.S)) ctx.stroke();
+    var fr=SINK(clamp((T-3.6)/0.4))*100;
+    if(fr>0){
+      ctx.save();
+      ctx.beginPath();ctx.arc(c.X,c.Y,fr*c.S,0,Math.PI*2);ctx.clip();
+      ctx.beginPath();
+      for(var i=0;i<BEAN.length;i++){var px=c.X+c.S*BEAN[i][0],py=c.Y+c.S*BEAN[i][1];i?ctx.lineTo(px,py):ctx.moveTo(px,py);}
+      ctx.closePath();ctx.fillStyle=INK;ctx.fill();ctx.lineWidth=2.4;ctx.stroke();
+      ctx.strokeStyle=PAPER;ctx.lineWidth=Math.max(2.4,9*c.S);
+      if(path(CREASE,CREASEL,0,1,c.X,c.Y,c.S)) ctx.stroke();
+      ctx.restore();
+    }
+
+    // 字标：四个字从一条看不见的基线下依次升起（停靠，无回弹）
+    var chars=['山','野','咖','啡'], size=150, x=930, base=594;
+    ctx.font='700 '+size+'px '+FONT;ctx.textBaseline='alphabetic';ctx.textAlign='left';ctx.fillStyle=INK;
+    for(var n=0;n<4;n++){
+      var tin=5.5+n*0.09;
+      if(T<tin) continue;
+      var p=DOCK(clamp((T-tin)/0.6));
+      ctx.save();ctx.beginPath();ctx.rect(x-10,base-size*1.0,size+40,size*1.25);ctx.clip();
+      ctx.fillText(chars[n],x,base+(1-p)*size*1.05);
+      ctx.restore();
+      x+=size+22;
+    }
+  }
+
+  var seeking=false, t0=null;
+  function loop(now){
+    if(seeking) return;
+    if(t0===null) t0=now;
+    var ms=now-t0; if(ms>DUR) ms=DUR;
+    render(ms);
+    if(ms<DUR) requestAnimationFrame(loop);
+  }
+  window.__seek=function(ms){seeking=true;render(ms);};
+  render(0);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

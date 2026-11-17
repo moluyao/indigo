@@ -1,8 +1,42 @@
 # 青出 · Indigo
 
-> **English summary.** *Indigo* (from the proverb "indigo comes from the indigo plant, yet is bluer than it") is a framework for absorbing other people's AI design and video skills **without inheriting their style**, plus a quality standard to judge the results. Instead of installing someone's skill, it runs isolated steps — **learn** (extract principles), **forget** (strip names, numbers and recipes), **rewrite** (an agent that never saw the sources re-derives everything from first principles), **check** (an independent agent verifies the rewrite doesn't reproduce the sources). On the creative side it enforces *diverge first, then converge*, a ban list of "AI-default looks", and blind review. In a first blind test (5 groups × 3 vague prompts, 2 independent reviewers), outputs made with the framework ranked first in all 6 rankings. Docs are in Chinese.
+> **English summary.** *Indigo* (from the proverb "indigo comes from the indigo plant, yet is bluer than it") is a framework for absorbing other people's AI design and video skills **without inheriting their style**, plus a quality standard to judge the results. Instead of installing someone's skill, it runs isolated steps — **learn** (extract principles), **forget** (strip names, numbers and recipes), **rewrite** (an agent that never saw the sources re-derives everything from first principles), **check** (an independent agent verifies the rewrite doesn't reproduce the sources). On the creative side it enforces *diverge first, then converge*, a ban list of "AI-default looks", and blind review. In blind tests, outputs made with the framework ranked first in all 6 rankings of round 1 (5 groups, 3 models), and won 5 of 6 rankings in round 2 (Opus 5.5 only, with vs. without, 3 runs each). Docs are in Chinese.
 
 青出取"青出于蓝而胜于蓝"：向别人学，最后超过它。
+
+## 第 2 轮测试结果（2026-11-19）：只用 Opus 5.5
+
+同一个模型，用青出（A 组）和不用（B 组）各独立做 3 次，三道新题：「帮我做一张音乐节海报」「做一个 20 秒的动画，给普通人讲清楚什么是复利」「给一个叫"山野咖啡"的品牌做一个 8 秒的 Logo 开场动画」。18 件作品随机编号，两位独立的 Opus 评审盲评。
+
+| 题目 | 评审 a 排序 | 评审 b 排序 |
+|---|---|---|
+| 海报 | B1 > B3 > A2 > B2 > A3 > A1 | B3 > A2 > A3 > B1 > A1 > B2 |
+| 复利动画 | **A3** > A2 > B2 > A1 > B3 > B1 | **A3** > A2 > B2 > B3 > B1 > A1 |
+| Logo 开场 | **A1** > A3 > B2 > A2 > B1 > B3 | **A1** > A3 > A2 > B2 > B3 > B1 |
+
+- 6 份排名里 5 份青出组平均名次更好；两位评审"每题只选一件"的 6 次选择里 5 次选了青出组；全轮唯一的 L3（两位评审一致）来自青出组。
+- 两组各自撞车：无框架组落在"奶油底 + 橙红日轮 / 米色讲解模板 / 暗底发光山线"这类默认模板上；青出组落在"等高线 / 俯视人群双色套印 / 三色分层柱"这类从题材出发的想法上，记忆点更强，但三次之间也重复了。
+- 海报题青出组输了：三张都给缺失的节名和日期留了空白填写栏，被判"占位"。
+
+结论：框架有效，没有限制创意；同时暴露出两个要修的问题（"不编造"规则把样稿内容留空、框架自己的"第二层默认"）。详见 [`eval/round2-results.md`](eval/round2-results.md)。
+
+**海报**
+
+| 青出 A1 | 青出 A2 | 青出 A3 | 无框架 B1 | 无框架 B2 | 无框架 B3 |
+|---|---|---|---|---|---|
+| <img src="eval/preview-r2/T1_A1.png" width="120"> | <img src="eval/preview-r2/T1_A2.png" width="120"> | <img src="eval/preview-r2/T1_A3.png" width="120"> | <img src="eval/preview-r2/T1_B1.png" width="120"> | <img src="eval/preview-r2/T1_B2.png" width="120"> | <img src="eval/preview-r2/T1_B3.png" width="120"> |
+
+**复利科普动画**
+
+| 青出 A1 | 青出 A2 | 青出 A3 | 无框架 B1 | 无框架 B2 | 无框架 B3 |
+|---|---|---|---|---|---|
+| <img src="eval/preview-r2/T2_A1.gif" width="150"><br>[视频](eval/preview-r2/T2_A1.mp4) | <img src="eval/preview-r2/T2_A2.gif" width="150"><br>[视频](eval/preview-r2/T2_A2.mp4) | <img src="eval/preview-r2/T2_A3.gif" width="150"><br>[视频](eval/preview-r2/T2_A3.mp4) | <img src="eval/preview-r2/T2_B1.gif" width="150"><br>[视频](eval/preview-r2/T2_B1.mp4) | <img src="eval/preview-r2/T2_B2.gif" width="150"><br>[视频](eval/preview-r2/T2_B2.mp4) | <img src="eval/preview-r2/T2_B3.gif" width="150"><br>[视频](eval/preview-r2/T2_B3.mp4) |
+
+**山野咖啡 Logo 开场**
+
+| 青出 A1 | 青出 A2 | 青出 A3 | 无框架 B1 | 无框架 B2 | 无框架 B3 |
+|---|---|---|---|---|---|
+| <img src="eval/preview-r2/T3_A1.gif" width="150"><br>[视频](eval/preview-r2/T3_A1.mp4) | <img src="eval/preview-r2/T3_A2.gif" width="150"><br>[视频](eval/preview-r2/T3_A2.mp4) | <img src="eval/preview-r2/T3_A3.gif" width="150"><br>[视频](eval/preview-r2/T3_A3.mp4) | <img src="eval/preview-r2/T3_B1.gif" width="150"><br>[视频](eval/preview-r2/T3_B1.mp4) | <img src="eval/preview-r2/T3_B2.gif" width="150"><br>[视频](eval/preview-r2/T3_B2.mp4) | <img src="eval/preview-r2/T3_B3.gif" width="150"><br>[视频](eval/preview-r2/T3_B3.mp4) |
 
 ## 为什么要有它
 

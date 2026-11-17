@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>山野咖啡</title>
+<style>
+html,body{margin:0;height:100%;background:#111}
+body{display:flex;align-items:center;justify-content:center}
+canvas{display:block;width:min(100vw,calc(100vh*16/9));height:auto}
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function(){
+  var W=1920,H=1080,DUR=8000;
+  var PAPER='#eef0ea', BROWN='#8a4b23', COFFEE='#2b1a10', CREMA='#e6d3b3', INK='#2b1a10';
+  var FS='"FangSong","STFangsong","FangSong_GB2312","Songti SC","SimSun",serif';
+  var CUP={x:978,y:540}, RIM=300;
+  var S={x:1020,y:510};                 // 山顶
+  var K=12, NP=260;
+
+  var c=document.getElementById('c'), ctx=c.getContext('2d');
+
+  function clamp(x){return x<0?0:x>1?1:x;}
+  function lerp(a,b,p){return a+(b-a)*p;}
+  function bez(x1,y1,x2,y2){
+    return function(x){
+      if(x<=0)return 0; if(x>=1)return 1;
+      var t=x;
+      for(var i=0;i<10;i++){
+        var cx=3*x1*t*(1-t)*(1-t)+3*x2*t*t*(1-t)+t*t*t-x;
+        var dx=3*x1*(1-t)*(1-t)+6*(x2-x1)*t*(1-t)+3*(1-x2)*t*t;
+        if(Math.abs(dx)<1e-6)break;
+        t-=cx/dx; t=t<0?0:t>1?1:t;
+      }
+      return 3*y1*t*(1-t)*(1-t)+3*y2*t*t*(1-t)+t*t*t;
+    };
+  }
+  var dock=bez(.31,.69,.64,1), sink=bez(.53,0,.67,1), out=bez(.36,0,.69,.31), carry=bez(.45,0,.55,1);
+  function hex(h){return [parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),parseInt(h.substr(5,2),16)];}
+  function mix(a,b,p){var A=hex(a),B=hex(b);return 'rgb('+Math.round(lerp(A[0],B[0],p))+','+Math.round(lerp(A[1],B[1],p))+','+Math.round(lerp(A[2],B[2],p))+')';}
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+  // ---------- 等高线（固定种子） ----------
+  var rnd=mulberry32(318);
+  var HARM=[];
+  for(var i=2;i<=6;i++) HARM.push({i:i,a:(0.5+rnd())*0.06/(i-1),ph:rnd()*Math.PI*2,dr:(rnd()-0.5)*0.9});
+  var CONT=[];
+  for(var k=0;k<K;k++){
+    var f=k/(K-1), g=Math.pow(f,1.3);
+    var cx=lerp(950,S.x,g), cy=lerp(560,S.y,g), R=34+410*Math.pow(1-f,1.25);
+    var pts=[];
+    for(var j=0;j<=NP;j++){
+      var th=-2.2+j/NP*Math.PI*2, n=0;
+      HARM.forEach(function(h){n+=h.a*Math.sin(h.i*th+h.ph+h.dr*f*3);});
+      n*=0.55+0.45*(1-f);
+      var rr=R*(1+n);
+      pts.push([cx+rr*Math.cos(th), cy+rr*Math.sin(th)*0.9]);
+    }
+    CONT.push({k:k,pts:pts,index:k%4===0});
+  }
+
+  // 落入杯中后的水面：一次涟漪 + 极慢的旋转
+  function warp(x,y,t){
+    if(t<=4.45) return [x,y];
+    var u=t-4.45;
+    if(u<0.95){
+      var dx=x-S.x, dy=y-S.y, d=Math.hypot(dx,dy)||1;
+      var rho=u*480, amp=11*(1-u/0.95);
+      var kk=amp*Math.exp(-Math.pow((d-rho)/34,2));
+      x+=dx/d*kk; y+=dy/d*kk;
+    }
+    var ang=0.03*u, ox=x-CUP.x, oy=y-CUP.y, ca=Math.cos(ang), sa=Math.sin(ang);
+    return [CUP.x+ox*ca-oy*sa, CUP.y+ox*sa+oy*ca];
+  }
+
+  function frac(k,t){
+    if(k<=3) return 1;
+    return carry(clamp((t-(0.05+(k-4)*0.24))/0.6));
+  }
+
+  function strokeContours(t,color,lwScale){
+    ctx.strokeStyle=color; ctx.lineCap='round'; ctx.lineJoin='round';
+    CONT.forEach(function(C){
+      var fr=frac(C.k,t); if(fr<=0) return;
+      var m=fr*NP, last=Math.floor(m);
+      ctx.lineWidth=(C.index?3.6:2.0)*lwScale;
+      ctx.beginPath();
+      for(var j=0;j<=last;j++){
+        var p=warp(C.pts[j][0],C.pts[j][1],t);
+        if(j===0) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]);
+      }
+      if(last<NP&&m>last){
+        var a=C.pts[last], b=C.pts[last+1], q=m-last;
+        var pp=warp(lerp(a[0],b[0],q),lerp(a[1],b[1],q),t);
+        ctx.lineTo(pp[0],pp[1]);
+      }
+      ctx.stroke();
+    });
+  }
+
+  function drawMark(t,lwScale){
+    var outA=1-out(clamp((t-3.35)/0.6));
+    var rimP=dock(clamp((t-2.75)/0.7));
+    var floodR=370*sink(clamp((t-3.55)/0.85));
+
+    // 杯沿之外的地图：被抽走
+    if(outA>0){
+      ctx.save();
+      ctx.beginPath(); ctx.rect(-2000,-2000,6000,6000);
+      ctx.arc(CUP.x,CUP.y,RIM,0,Math.PI*2,true);
+      ctx.clip('evenodd');
+      ctx.globalAlpha=outA;
+      strokeContours(t,BROWN,lwScale);
+      ctx.restore();
+    }
+    // 杯沿之内
+    ctx.save();
+    ctx.beginPath(); ctx.arc(CUP.x,CUP.y,RIM,0,Math.PI*2); ctx.clip();
+    if(floodR<RIM+60) strokeContours(t,BROWN,lwScale);
+    if(floodR>0){
+      ctx.beginPath(); ctx.arc(S.x,S.y,floodR,0,Math.PI*2); ctx.clip();
+      ctx.fillStyle=COFFEE; ctx.fillRect(0,0,W,H);
+      strokeContours(t,CREMA,lwScale);
+    }
+    ctx.restore();
+
+    // 山顶符号
+    var sp=dock(clamp((t-2.2)/0.3));
+    if(sp>0){
+      var s=warp(S.x,S.y,t), z=18*sp;
+      ctx.fillStyle=floodR>8?CREMA:BROWN;
+      ctx.beginPath();
+      ctx.moveTo(s[0],s[1]-z*0.62); ctx.lineTo(s[0]+z*0.54,s[1]+z*0.32); ctx.lineTo(s[0]-z*0.54,s[1]+z*0.32);
+      ctx.closePath(); ctx.fill();
+    }
+    // 杯沿：一笔画成
+    if(rimP>0){
+      ctx.strokeStyle=BROWN; ctx.lineWidth=12; ctx.lineCap='butt';
+      ctx.beginPath(); ctx.arc(CUP.x,CUP.y,RIM+6,-Math.PI/2,-Math.PI/2+Math.PI*2*rimP); ctx.stroke();
+    }
+    return floodR;
+  }
+
+  function spacedText(str,x,y,size,fill,halo,haloA){
+    ctx.font=size+'px '+FS; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    var adv=size*1.16;
+    for(var i=0;i<str.length;i++){
+      var cx=x+i*adv;
+      if(halo&&haloA>0){
+        ctx.save(); ctx.globalAlpha*=haloA;
+        ctx.strokeStyle=halo; ctx.lineWidth=size*0.2; ctx.lineJoin='round';
+        ctx.strokeText(str[i],cx,y); ctx.restore();
+      }
+      ctx.fillStyle=fill; ctx.fillText(str[i],cx,y);
+    }
+  }
+
+  var LP={x:S.x+26,y:S.y+18};           // 地图上"山野"注记的位置（杯内坐标）
+  var MARK_END={x:570,y:540,s:0.62};
+  var WM={x:850,y:594,size:150};
+
+  function render(ms){
+    var t=ms/1000;
+    ctx.globalAlpha=1;
+    ctx.fillStyle=PAPER; ctx.fillRect(0,0,W,H);
+
+    // 标志从画面中央搬到左侧
+    var pm=carry(clamp((t-5.3)/0.7));
+    var mx=lerp(CUP.x,MARK_END.x,pm), my=lerp(CUP.y,MARK_END.y,pm), msc=lerp(1,MARK_END.s,pm);
+    ctx.save();
+    ctx.translate(mx,my); ctx.scale(msc,msc); ctx.translate(-CUP.x,-CUP.y);
+    var floodR=drawMark(t,1/Math.sqrt(msc));
+    ctx.restore();
+
+    // "山野"：先是地图上的山名注记，后成为字标的前两个字
+    var lp0=dock(clamp((t-2.35)/0.4));
+    if(lp0>0){
+      var w=warp(LP.x,LP.y,t);
+      var ax=mx+(w[0]-CUP.x)*msc, ay=my+(w[1]-CUP.y)*msc+14*(1-lp0), asz=46*msc;
+      var p2=carry(clamp((t-5.65)/0.7));
+      var x=lerp(ax,WM.x,p2), y=lerp(ay,WM.y,p2), size=asz*Math.pow(WM.size/asz,p2);
+      var flooded=floodR>70;
+      var base=flooded?CREMA:BROWN, halo=flooded?COFFEE:PAPER;
+      var fill=p2>0?mix(base,INK,clamp(p2*1.4)):base;
+      ctx.globalAlpha=clamp(lp0*3);
+      spacedText('山野',x,y,size,fill,halo,1-clamp(p2*3));
+      ctx.globalAlpha=1;
+    }
+    // "咖啡"两字依次落定
+    [['咖',6.2,2],['啡',6.35,3]].forEach(function(ch){
+      var p=clamp((t-ch[1])/0.4); if(p<=0) return;
+      ctx.globalAlpha=clamp(p*3);
+      spacedText(ch[0],WM.x+ch[2]*WM.size*1.16,WM.y+40*(1-dock(p)),WM.size,INK,null,0);
+      ctx.globalAlpha=1;
+    });
+  }
+
+  var start=null, seeking=false;
+  function frame(now){
+    if(seeking) return;
+    if(start===null) start=now;
+    var ms=Math.min(DUR,now-start);
+    render(ms);
+    if(ms<DUR) requestAnimationFrame(frame);
+  }
+  window.__seek=function(ms){
+    seeking=true;
+    render(Math.max(0,Math.min(DUR,+ms||0)));
+  };
+  render(0);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

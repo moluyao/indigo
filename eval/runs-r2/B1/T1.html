@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>回声谷音乐节 2026</title>
+<style>
+  html,body{margin:0;padding:0;background:#1b1916;}
+  .poster{
+    position:relative;width:1080px;height:1350px;margin:0 auto;overflow:hidden;
+    background:#ece3cf;color:#1a1824;
+    font-family:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Hiragino Sans GB",sans-serif;
+  }
+  .mono{font-family:"SF Mono","Consolas","Menlo","DejaVu Sans Mono",monospace;}
+  svg.art{position:absolute;left:0;top:0;}
+  .top{position:absolute;left:70px;right:70px;top:52px;display:flex;justify-content:space-between;
+       font-size:21px;letter-spacing:.14em;font-weight:600;}
+  .top-rule{position:absolute;left:70px;right:70px;top:96px;height:3px;background:#1a1824;}
+  .side{position:absolute;right:30px;top:360px;writing-mode:vertical-rl;font-size:16px;letter-spacing:.32em;opacity:.7;}
+  .side-l{position:absolute;left:30px;top:360px;writing-mode:vertical-rl;font-size:18px;letter-spacing:.6em;font-weight:700;}
+  .sticker{position:absolute;left:842px;top:150px;width:168px;height:168px;border-radius:50%;
+           background:#1a1824;color:#ece3cf;transform:rotate(12deg);
+           display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+  .sticker b{font-size:58px;line-height:1;font-weight:900;letter-spacing:-.02em;}
+  .sticker span{font-size:17px;letter-spacing:.18em;margin-top:6px;}
+  .sticker i{font-style:normal;font-size:13px;letter-spacing:.2em;opacity:.7;margin-top:4px;}
+  .title{position:absolute;left:58px;top:812px;font-size:226px;line-height:1;font-weight:900;letter-spacing:-.03em;}
+  .title-r{position:absolute;right:70px;top:836px;text-align:right;}
+  .title-r .cn{font-size:66px;font-weight:900;color:#e8431f;line-height:1.05;letter-spacing:.06em;}
+  .title-r .en{font-size:21px;letter-spacing:.2em;line-height:1.5;margin-top:14px;font-weight:600;}
+  .lineup{position:absolute;left:70px;right:70px;top:1076px;}
+  .lineup .lab{font-size:16px;letter-spacing:.3em;font-weight:700;display:flex;align-items:center;gap:14px;}
+  .lineup .lab:after{content:"";flex:1;height:2px;background:#1a1824;}
+  .l1{font-size:54px;font-weight:900;margin-top:14px;letter-spacing:.02em;white-space:nowrap;}
+  .l1 em{font-style:normal;color:#e8431f;font-weight:400;margin:0 .28em;}
+  .l2{font-size:31px;font-weight:700;margin-top:10px;white-space:nowrap;letter-spacing:.04em;}
+  .l2 em,.l3 em{font-style:normal;opacity:.4;margin:0 .35em;}
+  .l3{font-size:22px;margin-top:10px;white-space:nowrap;opacity:.72;letter-spacing:.06em;}
+  .foot{position:absolute;left:70px;right:70px;bottom:38px;border-top:3px solid #1a1824;padding-top:14px;
+        display:flex;justify-content:space-between;align-items:baseline;font-size:20px;font-weight:600;letter-spacing:.06em;}
+  .foot .price{color:#e8431f;font-weight:900;}
+  .grain{position:absolute;inset:0;pointer-events:none;mix-blend-mode:multiply;opacity:.55;}
+</style>
+</head>
+<body>
+<div class="poster" id="poster">
+  <svg class="art" id="art" width="1080" height="1350" viewBox="0 0 1080 1350"></svg>
+
+  <div class="top mono"><span>VOL.07</span><span>2026.05.01 — 05.03</span><span>浙江 · 莫干山</span></div>
+  <div class="top-rule"></div>
+
+  <div class="side-l">把耳朵交给山谷</div>
+  <div class="side mono">N30°36′ E119°52′ · ALT 420M · 回声谷营地</div>
+
+  <div class="sticker"><b>40+</b><span>组音乐人</span><i>3 DAYS · 2 STAGES</i></div>
+
+  <div class="title">回声谷</div>
+  <div class="title-r">
+    <div class="cn">音乐节</div>
+    <div class="en mono">ECHO VALLEY<br>MUSIC FESTIVAL<br>MMXXVI</div>
+  </div>
+
+  <div class="lineup">
+    <div class="lab mono">LINE-UP 首发阵容</div>
+    <div class="l1">白噪音乐队<em>/</em>低空飞行<em>/</em>夜航船</div>
+    <div class="l2">海盐汽水<em>·</em>晚风电台<em>·</em>月球背面<em>·</em>南方舞厅<em>·</em>万物生长</div>
+    <div class="l3">山羊胡子<em>·</em>卡带人<em>·</em>灰色频道<em>·</em>青柠<em>·</em>慢车<em>·</em>玻璃心<em>·</em>野火<em>·</em>以及更多</div>
+  </div>
+
+  <div class="foot">
+    <span>早鸟三日票 <span class="price">¥380</span>　单日票 ¥220</span>
+    <span class="mono">05.01 14:00 开场 · 露营区同步开放</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  var NS='http://www.w3.org/2000/svg';
+  var svg=document.getElementById('art');
+  function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  var R=rng(20260501);
+  function el(name,attrs,parent){var e=document.createElementNS(NS,name);for(var k in attrs)e.setAttribute(k,attrs[k]);(parent||svg).appendChild(e);return e;}
+
+  var BG='#ece3cf', INK='#1a1824', RED='#e8431f';
+
+  var defs=el('defs',{});
+  var rg=el('radialGradient',{id:'sun',cx:'50%',cy:'45%',r:'60%'},defs);
+  el('stop',{offset:'0%','stop-color':'#f56a32'},rg);
+  el('stop',{offset:'100%','stop-color':'#e33d1b'},rg);
+  var flt=el('filter',{id:'grain',x:'0',y:'0',width:'100%',height:'100%'},defs);
+  el('feTurbulence',{type:'fractalNoise',baseFrequency:'0.9',numOctaves:'2',seed:'7',result:'n'},flt);
+  el('feColorMatrix',{type:'matrix',values:'0 0 0 0 0.1  0 0 0 0 0.09  0 0 0 0 0.12  0 0 0 -1.6 1.05'},flt);
+
+  // sun
+  var SX=540, SY=318, SRAD=196;
+  el('circle',{cx:SX,cy:SY,r:SRAD,fill:'url(#sun)'});
+  // thin echo rings around the sun
+  var cp=el('clipPath',{id:'below'},defs); el('rect',{x:0,y:112,width:1080,height:1300},cp);
+  var ringG=el('g',{'clip-path':'url(#below)'});
+  for(var k=1;k<=4;k++){
+    el('circle',{cx:SX,cy:SY,r:SRAD+k*22,fill:'none',stroke:INK,'stroke-width':1.4,opacity:(0.55-k*0.11).toFixed(2),'stroke-dasharray':k%2?'2 7':'none'},ringG);
+  }
+
+  // ridgeline of sound waves (Joy-Division style, drawn top to bottom)
+  var N=36, X0=70, X1=1010, TOP=338, GAP=12.6, STEP=3, CX=540;
+  var ACCENT_ROW=22;
+  for(var i=0;i<N;i++){
+    var base=TOP+i*GAP;
+    var ns=[]; var cells=Math.ceil((X1-X0)/22)+2;
+    for(var q=0;q<cells;q++) ns.push(R()*2-1);
+    var bumps=[], nb=3+Math.floor(R()*4);
+    for(var b=0;b<nb;b++){
+      bumps.push({c:CX+(R()+R()+R()-1.5)*230, w:10+R()*34, h:0.25+R()*0.75});
+    }
+    var rowAmp=36+150*Math.pow(Math.sin(Math.PI*(i+3)/(N+8)),1.6);
+    var pts=[];
+    for(var x=X0;x<=X1+0.01;x+=STEP){
+      var u=(x-CX)/420, env=Math.max(0,1-u*u); env=env*env*env;
+      var s=0; for(var j=0;j<bumps.length;j++){var dx=(x-bumps[j].c)/bumps[j].w; s+=bumps[j].h*Math.exp(-dx*dx);}
+      var fx=(x-X0)/22, k0=Math.floor(fx), f=fx-k0, sm=f*f*(3-2*f);
+      var n=ns[k0]*(1-sm)+ns[k0+1]*sm;
+      var raw=rowAmp*s+16*Math.abs(n);
+      var lift=185*Math.tanh(raw/185)*env;
+      var y=base-lift-1.4*n;
+      pts.push([x,y]);
+    }
+    var d='M'+pts.map(function(p){return p[0].toFixed(1)+' '+p[1].toFixed(2);}).join(' L');
+    var fillD=d+' L'+X1+' '+(base+70)+' L'+X0+' '+(base+70)+' Z';
+    el('path',{d:fillD,fill:BG,stroke:'none'});
+    var accent=(i===ACCENT_ROW);
+    el('path',{d:d,fill:'none',stroke:accent?RED:INK,'stroke-width':accent?3.4:2.1,'stroke-linejoin':'round','stroke-linecap':'round'});
+  }
+
+  // small marker ticks along left/right of the ridgelines
+  for(var m=0;m<N;m+=5){
+    var yy=TOP+m*GAP;
+    el('line',{x1:X0-18,y1:yy,x2:X0-6,y2:yy,stroke:INK,'stroke-width':2});
+  }
+  var lab=el('text',{x:X1+0,y:TOP+(N-1)*GAP+30,'text-anchor':'end','font-size':15,'letter-spacing':'3',fill:INK,opacity:.65,'font-family':'Consolas, Menlo, monospace'});
+  lab.textContent='FIG.07 — 山谷的 36 道回声';
+
+  // paper grain on top
+  el('rect',{x:0,y:0,width:1080,height:1350,filter:'url(#grain)',opacity:.22,style:'mix-blend-mode:multiply'});
+})();
+</script>
+</body>
+</html>

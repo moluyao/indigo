@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>20 秒看懂复利</title>
+<style>
+  html,body{margin:0;padding:0;background:#F3EFE6;overflow:hidden}
+  canvas{display:block;width:1920px;height:1080px}
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function(){
+const W=1920,H=1080,DUR=20000;
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const F='"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif';
+const N='"SF Pro Display","Segoe UI","Helvetica Neue",Arial,sans-serif';
+const C={bg:'#F3EFE6',ink:'#1E1C19',sub:'#77716A',prin:'#2F5D50',int:'#E3A72F',ioi:'#D9573B',simple:'#A49C8F',grid:'#DDD6C8'};
+const cl=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const p=(t,a,b)=>cl((t-a)/(b-a));
+const eo=x=>1-Math.pow(1-x,3);
+const eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const back=x=>{const c1=1.5,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2);};
+
+function T(s,x,y,o){
+  ctx.save();
+  ctx.globalAlpha*=(o.a==null?1:o.a);
+  ctx.font=(o.w||700)+' '+o.s+'px '+(o.f||F);
+  ctx.fillStyle=o.c||C.ink;
+  ctx.textAlign=o.al||'center';
+  ctx.textBaseline=o.b||'alphabetic';
+  ctx.fillText(s,x,y);
+  ctx.restore();
+}
+function rrect(x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function fmt(v,d){return v.toFixed(d);}
+
+/* ---------- Scene 1: 问题 ---------- */
+function s1(t){
+  const a=1-p(t,3000,3400); if(a<=0) return;
+  ctx.save(); ctx.globalAlpha=a;
+  const q=eo(p(t,100,700));
+  T('什么是复利？',960,330+30*(1-q),{s:120,w:800,a:q});
+  const q2=eo(p(t,700,1300));
+  T('假设你存了 100 元，每年利息 10%',960,440+20*(1-q2),{s:52,w:500,c:C.sub,a:q2});
+  const d=p(t,1300,1900);
+  if(d>0){
+    const y=600-220*(1-back(d));
+    ctx.globalAlpha=a*cl(d*3);
+    ctx.fillStyle=C.prin; rrect(810,y,300,300,10); ctx.fill();
+    T('本金',960,y+130,{s:40,w:500,c:'rgba(255,255,255,.75)'});
+    T('100',960,y+200,{s:72,w:800,c:'#fff',f:N});
+    ctx.globalAlpha=a;
+  }
+  const q3=eo(p(t,2000,2500));
+  T('一年年存下去，钱会怎么长？有两种算法——',960,1000,{s:42,w:500,c:C.ink,a:q3});
+  ctx.restore();
+}
+
+/* ---------- Scene 2: 单利 vs 复利 ---------- */
+const Ys=[4200,5400,6600];
+const EXTRA=[0,1,2.1];
+function stack(cx,isC,t){
+  const bw=280,k=3,base=900;
+  ctx.fillStyle=C.prin; rrect(cx-bw/2,base-300,bw,300,8); ctx.fill();
+  T('本金 100',cx,base-140,{s:38,w:600,c:'rgba(255,255,255,.85)'});
+  let y=base-300,val=100,lastIoi=null,lastIoiV=0;
+  for(let i=0;i<3;i++){
+    const g=eo(p(t,Ys[i],Ys[i]+650)); if(g<=0) continue;
+    const parts=[[10,C.int]]; if(isC&&EXTRA[i]>0) parts.push([EXTRA[i],C.ioi]);
+    for(const [v,col] of parts){
+      const h=v*k*g;
+      ctx.fillStyle=col; ctx.fillRect(cx-bw/2,y-h,bw,h);
+      ctx.fillStyle='rgba(0,0,0,.14)'; ctx.fillRect(cx-bw/2,y-h,bw,1);
+      y-=h; val+=v*g;
+      if(col===C.ioi){lastIoi=y+h/2;lastIoiV=v;}
+    }
+  }
+  T(isC?fmt(val,1):fmt(val,0),cx,y-24,{s:60,w:800,f:N,c:isC?C.prin:'#6E675D'});
+  return {top:y,ioiY:lastIoi,ioiV:lastIoiV};
+}
+function s2(t){
+  const a=p(t,3400,3800)*(1-p(t,9200,9600)); if(a<=0) return;
+  ctx.save(); ctx.globalAlpha=a;
+  // legend
+  const lg=[[C.prin,'本金'],[C.int,'本金生的利息'],[C.ioi,'利息生的利息']];
+  ctx.font='500 28px '+F; let lx=960-330;
+  for(const [c,s] of lg){ctx.fillStyle=c;rrect(lx,108,24,24,4);ctx.fill();T(s,lx+36,130,{s:28,w:500,al:'left',c:C.sub});lx+=36+ctx.measureText(s).width+48;}
+  // headings
+  T('单利',600,240,{s:72,w:800,c:'#6E675D'});
+  T('只有本金生利息',600,292,{s:34,w:500,c:C.sub});
+  T('复利',1320,240,{s:72,w:800,c:C.prin});
+  T('利息也会接着生利息',1320,292,{s:34,w:500,c:C.sub});
+  // year counter
+  let n=0; for(const y of Ys) if(t>=y) n++;
+  T(n===0?'存入':'第 '+n+' 年',960,580,{s:52,w:700,c:C.ink});
+  ctx.fillStyle=C.grid; ctx.fillRect(900,604,120,3);
+  ctx.fillStyle=C.ink; ctx.fillRect(900,604,120*cl((t-3800)/(7400-3800)),3);
+  const L=stack(600,false,t);
+  const R=stack(1320,true,t);
+  // left note
+  const ln=eo(p(t,4500,5000));
+  if(ln>0) T('每年都是 +10',600-140-24,L.top+40,{s:32,w:600,al:'right',c:'#B9852A',a:ln});
+  // ioi callout
+  if(R.ioiY!=null){
+    const ca=eo(p(t,5700,6200));
+    ctx.globalAlpha=a*ca;
+    ctx.strokeStyle=C.ioi; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(1320+140+8,R.ioiY); ctx.lineTo(1320+140+56,R.ioiY); ctx.stroke();
+    ctx.fillStyle=C.ioi; ctx.beginPath(); ctx.arc(1320+140+8,R.ioiY,5,0,Math.PI*2); ctx.fill();
+    T('利息生的利息 +'+(R.ioiV===1?'1':'2.1'),1320+140+68,R.ioiY+12,{s:34,w:700,al:'left',c:C.ioi});
+    T('一开始只多一点点',1320+140+68,R.ioiY+54,{s:26,w:500,al:'left',c:C.sub});
+    ctx.globalAlpha=a;
+  }
+  const cap=eo(p(t,7900,8400));
+  T('3 年才差 3.1 元？别急，把时间拉长看看——',960,1010,{s:42,w:600,a:cap});
+  ctx.restore();
+}
+
+/* ---------- Scene 3: 30 年曲线 ---------- */
+const X0=300,X1=1620,Y0=900,Y1=250,VMAX=1800;
+const X=n=>X0+(X1-X0)*n/30, Y=v=>Y0-(Y0-Y1)*v/VMAX;
+const comp=n=>100*Math.pow(1.1,n), simp=n=>100+10*n;
+function s3(t){
+  const a=p(t,9600,10000)*(1-p(t,15400,15800)); if(a<=0) return;
+  ctx.save(); ctx.globalAlpha=a;
+  const pr=eio(p(t,10200,14200)), nm=30*pr;
+  T('如果一直存 30 年：',X0,160,{s:56,w:800,al:'left'});
+  T('第 '+Math.floor(nm+1e-6)+' 年',X1,160,{s:56,w:800,al:'right',c:C.prin,f:F});
+  // grid
+  ctx.lineWidth=2;
+  for(let v=0;v<=1500;v+=500){
+    ctx.strokeStyle=v===0?C.ink:C.grid; ctx.beginPath(); ctx.moveTo(X0,Y(v)); ctx.lineTo(X1,Y(v)); ctx.stroke();
+    T(v+' 元',X0-20,Y(v)+10,{s:26,w:500,al:'right',c:C.sub});
+  }
+  for(let n=0;n<=30;n+=10) T(n+' 年',X(n),Y0+44,{s:26,w:500,c:C.sub});
+  if(nm>0){
+    const step=0.1, pts=[];
+    for(let n=0;n<nm;n+=step) pts.push(n); pts.push(nm);
+    // gap fill
+    ctx.beginPath();
+    pts.forEach((n,i)=>{const x=X(n),y=Y(comp(n)); i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+    for(let i=pts.length-1;i>=0;i--) ctx.lineTo(X(pts[i]),Y(simp(pts[i])));
+    ctx.closePath(); ctx.fillStyle='rgba(227,167,47,.38)'; ctx.fill();
+    // simple line
+    ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.strokeStyle=C.simple; ctx.lineWidth=6;
+    ctx.beginPath(); ctx.moveTo(X(0),Y(simp(0))); ctx.lineTo(X(nm),Y(simp(nm))); ctx.stroke();
+    // compound line
+    ctx.strokeStyle=C.prin; ctx.lineWidth=7;
+    ctx.beginPath(); pts.forEach((n,i)=>{const x=X(n),y=Y(comp(n)); i?ctx.lineTo(x,y):ctx.moveTo(x,y);}); ctx.stroke();
+    // heads
+    const cv_=comp(nm), sv=simp(nm);
+    ctx.fillStyle=C.prin; ctx.beginPath(); ctx.arc(X(nm),Y(cv_),10,0,7); ctx.fill();
+    ctx.fillStyle=C.simple; ctx.beginPath(); ctx.arc(X(nm),Y(sv),9,0,7); ctx.fill();
+    const lx=X(nm)+22;
+    T('复利 '+Math.round(cv_)+' 元',lx,Y(cv_)+12,{s:36,w:800,al:'left',c:C.prin});
+    T('单利 '+Math.round(sv)+' 元',lx,Y(sv)+(Y(sv)-Y(cv_)<50?44:12),{s:32,w:700,al:'left',c:'#857D71'});
+  }
+  // annotation
+  const an=eo(p(t,13900,14500));
+  if(an>0){
+    ctx.globalAlpha=a*an;
+    T('中间这块金色，全是“利息生的利息”',760,400,{s:40,w:700,c:C.ink});
+    T('30 年后，它比单利多出 1345 元',760,456,{s:34,w:600,c:'#B07A16'});
+    ctx.strokeStyle=C.ink; ctx.lineWidth=2.5; ctx.setLineDash([8,8]);
+    const tx=X(26), ty=(Y(comp(26))+Y(simp(26)))/2;
+    ctx.beginPath(); ctx.moveTo(1100,470); ctx.quadraticCurveTo(1300,480,tx,ty); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=C.ink; ctx.beginPath(); ctx.arc(tx,ty,7,0,7); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* ---------- Scene 4: 时间是秘诀 ---------- */
+function s4(t){
+  const a=p(t,15800,16200)*(1-p(t,18000,18400)); if(a<=0) return;
+  ctx.save(); ctx.globalAlpha=a;
+  T('秘诀只有一个：时间',960,220,{s:84,w:800});
+  T('年利率 10%，大约每 7 年就翻一倍',960,300,{s:44,w:500,c:C.sub});
+  const vals=[100,200,400,800,1600], labs=['今天','约 7 年','约 14 年','约 21 年','约 28 年'];
+  const sz=vals.map(v=>72*Math.sqrt(v/100)), gap=70;
+  let tot=sz.reduce((s,v)=>s+v,0)+gap*4, x=960-tot/2, base=780;
+  for(let i=0;i<5;i++){
+    const g=p(t,16300+i*260,16300+i*260+450), e=back(g), s=sz[i];
+    if(g>0){
+      ctx.save(); ctx.globalAlpha=a*cl(g*3);
+      const cx=x+s/2, cy=base-s/2;
+      ctx.translate(cx,cy); ctx.scale(e,e); ctx.translate(-cx,-cy);
+      ctx.fillStyle=C.int; rrect(x,base-s,s,s,6); ctx.fill();
+      ctx.fillStyle=C.prin; rrect(x,base-72,72,72,6); ctx.fill();
+      ctx.restore();
+      ctx.save(); ctx.globalAlpha=a*eo(g);
+      T('¥'+vals[i],x+s/2,base-s-20,{s:38,w:800,f:N,c:i?C.ink:C.prin});
+      T(labs[i],x+s/2,base+50,{s:30,w:600,c:C.sub});
+      if(i>0) T('×2',x-gap/2,base-30,{s:28,w:700,c:'#B07A16',f:N});
+      ctx.restore();
+    }
+    x+=s+gap;
+  }
+  const nt=eo(p(t,17500,17900));
+  T('深绿色是你最初的 100 元，金色全是利息长出来的',960,900,{s:34,w:500,c:C.ink,a:nt});
+  T('小技巧：72 ÷ 年利率 ≈ 翻一倍需要的年数',960,960,{s:28,w:500,c:C.sub,a:nt});
+  ctx.restore();
+}
+
+/* ---------- Scene 5: 总结 ---------- */
+function s5(t){
+  const a=eo(p(t,18400,18900)); if(a<=0) return;
+  ctx.save(); ctx.globalAlpha=a;
+  T('复利 = 利息也会生利息',960,430+20*(1-a),{s:100,w:800});
+  const b=eo(p(t,18700,19200));
+  T('最终金额 = 本金 × (1 + 利率) ^ 年数',960,550,{s:46,w:500,c:C.sub,a:b});
+  const c=eo(p(t,19000,19500));
+  ctx.globalAlpha=a*c;
+  ctx.fillStyle=C.prin; rrect(960-330,620,660,96,48); ctx.fill();
+  T('越早开始，时间越替你干活',960,684,{s:46,w:700,c:'#fff'});
+  ctx.restore();
+}
+
+function render(t){
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.globalAlpha=1;
+  ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+  s1(t); s2(t); s3(t); s4(t); s5(t);
+  // progress bar
+  ctx.fillStyle='rgba(30,28,25,.08)'; ctx.fillRect(0,H-6,W,6);
+  ctx.fillStyle=C.int; ctx.fillRect(0,H-6,W*cl(t/DUR),6);
+}
+
+let start=null, seeking=false;
+function loop(now){
+  if(seeking) return;
+  if(start===null) start=now;
+  const t=Math.min(now-start,DUR);
+  render(t);
+  if(t<DUR) requestAnimationFrame(loop);
+}
+window.__seek=function(ms){
+  seeking=true;
+  render(cl(+ms||0,0,DUR));
+};
+render(0);
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

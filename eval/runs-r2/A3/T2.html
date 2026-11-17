@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>什么是复利</title>
+<style>
+html,body{margin:0;height:100%;background:#111}
+body{display:flex;align-items:center;justify-content:center}
+canvas{display:block;width:min(100vw,calc(100vh*16/9));height:auto}
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function(){
+  var W=1920,H=1080,DUR=20000;
+  var BG='#e8ebee', INK='#22262c', GRAY='#9aa1ab', RED='#c22e17', WHITE='#f4f5f6';
+  var FONT='"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC",sans-serif';
+  var X0=160, Y0=150, U=1.38, PITCH=28, BH=22, N=25;
+
+  var c=document.getElementById('c'), ctx=c.getContext('2d');
+
+  function clamp(x){return x<0?0:x>1?1:x;}
+  function bez(x1,y1,x2,y2){
+    return function(x){
+      if(x<=0)return 0; if(x>=1)return 1;
+      var t=x;
+      for(var i=0;i<10;i++){
+        var cx=3*x1*t*(1-t)*(1-t)+3*x2*t*t*(1-t)+t*t*t-x;
+        var dx=3*x1*(1-t)*(1-t)+6*(x2-x1)*t*(1-t)+3*(1-x2)*t*t;
+        if(Math.abs(dx)<1e-6)break;
+        t-=cx/dx; t=t<0?0:t>1?1:t;
+      }
+      return 3*y1*t*(1-t)*(1-t)+3*y2*t*t*(1-t)+t*t*t;
+    };
+  }
+  var dock=bez(.31,.69,.64,1), carry=bez(.45,0,.55,1);
+
+  // 数学：本金 100，年利率 10%（示例假设），复利
+  function Bv(r){return 10*r;}                                   // 本金生的利息
+  function Cv(r){return 100*(Math.pow(1.1,r)-1-0.1*r);}           // 利息生的利息
+
+  // 每一行（每一年）出现的时刻：前两年慢讲，之后逐年加速（×0.94）
+  var T=[-1e9,2.4,5.8,9.6];
+  (function(){var d=0.4;for(var r=4;r<=N;r++){T[r]=T[r-1]+d;d*=0.94;}})();
+  function animLen(r){var gap=r<N?T[r+1]-T[r]:0.4;return Math.min(0.5,gap*1.4);}
+
+  function rowState(r,t){
+    if(r===0) return {y:0,b:0,c:0};
+    var t0=T[r]; if(t<t0) return null;
+    var pd,gb,gc;
+    if(r<=2){
+      pd=carry(clamp((t-t0)/0.45));
+      gb=dock(clamp((t-t0-0.45)/0.7));
+      gc=dock(clamp((t-t0-1.2)/0.6));
+    }else{
+      var a=animLen(r);
+      pd=carry(clamp((t-t0)/(a*0.5)));
+      gb=gc=dock(clamp((t-t0-a*0.2)/(a*0.8)));
+    }
+    return {y:r-1+pd, b:Bv(r-1)+(Bv(r)-Bv(r-1))*gb, c:Cv(r-1)+(Cv(r)-Cv(r-1))*gc};
+  }
+  function reff(t){var s=0;for(var r=1;r<=N;r++)s+=clamp((t-T[r]+0.3)/0.6);return s;}
+  function scaleAt(t){
+    var r=reff(t);
+    return Math.min(6, 730/(PITCH*(r+1)), 1600/(U*100*Math.pow(1.1,r)));
+  }
+
+  function drawRow(st,s){
+    var y=Y0+st.y*PITCH*s, h=BH*s, x=X0;
+    var wP=100*U*s, wB=st.b*U*s, wC=st.c*U*s;
+    ctx.fillStyle=INK; ctx.fillRect(x,y,wP,h); x+=wP;
+    if(wB>0.01){ctx.fillStyle=GRAY;ctx.fillRect(x,y,wB,h);x+=wB;}
+    if(wC>0.01){ctx.fillStyle=RED;ctx.fillRect(x,y,wC,h);x+=wC;}
+    return {end:x, mid:y+h/2};
+  }
+
+  function parts(list,x,y,size,weight,align){
+    ctx.font=(weight||700)+' '+size+'px '+FONT;
+    var total=0; list.forEach(function(p){total+=ctx.measureText(p[0]).width;});
+    var cx=align==='right'?x-total:x;
+    ctx.textAlign='left';
+    list.forEach(function(p){ctx.fillStyle=p[1];ctx.fillText(p[0],cx,y);cx+=ctx.measureText(p[0]).width;});
+  }
+  // 入场：从下方 dy 停靠到位，前 1/3 时间内由透明到实
+  function enter(t,t0,dur,dist){
+    if(t0<=0) return {a:1,dy:0};
+    var p=clamp((t-t0)/dur);
+    return {a:clamp(p*3), dy:dist*(1-dock(p))};
+  }
+
+  var CAPS=[
+    [0,   [['存 100 元，每年利息 10%',INK]]],
+    [2.4, [['第 1 年：100 元生出 10 元利息',INK]]],
+    [5.8, [['第 2 年：多出的 ',INK],['1 元',RED],['，是利息生的利息',INK]]],
+    [9.6, [['之后每一年，连本带利一起生利息',INK]]],
+    [15.1,null]
+  ];
+
+  function render(ms){
+    var t=ms/1000;
+    ctx.globalAlpha=1;
+    ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
+    ctx.textBaseline='alphabetic';
+    var s=scaleAt(t);
+
+    var ends=[];
+    for(var r=0;r<=N;r++){
+      var st=rowState(r,t);
+      if(st) ends[r]=drawRow(st,s);
+    }
+
+    // 世界内标注（只在放大时出现）
+    ctx.textBaseline='middle';
+    var a0=clamp((100*U*s-300)/80);
+    if(a0>0){
+      ctx.globalAlpha=a0; ctx.fillStyle=WHITE;
+      ctx.font='700 52px '+FONT; ctx.textAlign='left';
+      ctx.fillText('本金 100',X0+28,Y0+BH*s/2);
+      ctx.globalAlpha=1;
+    }
+    var zoomA=clamp((s-4.4)/0.6);
+    if(ends[1]){
+      var p1=clamp((t-T[1]-1.05)/0.3), a1=p1*zoomA;
+      if(a1>0){ctx.globalAlpha=a1;parts([['+10',INK]],ends[1].end+24-12*(1-dock(p1)),ends[1].mid,52,700);ctx.globalAlpha=1;}
+    }
+    if(ends[2]){
+      var p2=clamp((t-T[2]-1.75)/0.3), a2=p2*zoomA;
+      if(a2>0){ctx.globalAlpha=a2;parts([['+10  ',INK],['+1',RED]],ends[2].end+24-12*(1-dock(p2)),ends[2].mid,52,700);ctx.globalAlpha=1;}
+    }
+    ctx.textBaseline='alphabetic';
+
+    // 底部字幕
+    var ci=0; for(var i=0;i<CAPS.length;i++) if(t>=CAPS[i][0]) ci=i;
+    var cap=CAPS[ci];
+    if(cap[1]){
+      var e=enter(t,cap[0],0.35,24);
+      ctx.globalAlpha=e.a; parts(cap[1],X0,1010+e.dy,56,700); ctx.globalAlpha=1;
+    }
+
+    // 右上：年份计数 → 结论
+    if(t>=T[1]&&t<15.9){
+      var n=0; for(var k=1;k<=N;k++) if(t>=T[k]) n=k;
+      var ec=enter(t,T[1],0.35,30);
+      ctx.globalAlpha=ec.a; parts([['第 '+n+' 年',INK]],1760,250+ec.dy,110,700,'right'); ctx.globalAlpha=1;
+    }
+    if(t>=15.9){
+      var e1=enter(t,15.9,0.4,30);
+      ctx.globalAlpha=e1.a; parts([['25 年后，约 1083 元',INK]],1760,250+e1.dy,92,700,'right'); ctx.globalAlpha=1;
+    }
+    if(t>=16.7){
+      var e2=enter(t,16.7,0.4,24);
+      ctx.globalAlpha=e2.a; parts([['其中最大的一块，是',INK],['利息生的利息',RED]],1760,345+e2.dy,50,700,'right'); ctx.globalAlpha=1;
+    }
+
+    // 最后一行下方的分段标注
+    var labs=[
+      [15.1, 0,   '本金',        '100',    INK],
+      [15.35,100, '本金生的利息','250',    INK],
+      [15.6, 350, '利息生的利息','约 733', RED]
+    ];
+    labs.forEach(function(L){
+      if(t<L[0]) return;
+      var e=enter(t,L[0],0.35,16), x=X0+L[1]*U*s;
+      ctx.globalAlpha=e.a;
+      parts([[L[2],L[4]]],x,922+e.dy,36,700);
+      parts([[L[3],L[4]]],x,966+e.dy,36,700);
+      ctx.globalAlpha=1;
+    });
+  }
+
+  var start=null, seeking=false;
+  function frame(now){
+    if(seeking) return;
+    if(start===null) start=now;
+    var ms=Math.min(DUR,now-start);
+    render(ms);
+    if(ms<DUR) requestAnimationFrame(frame);
+  }
+  window.__seek=function(ms){
+    seeking=true;
+    render(Math.max(0,Math.min(DUR,+ms||0)));
+  };
+  render(0);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

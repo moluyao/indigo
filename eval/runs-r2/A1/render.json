@@ -1,0 +1,70 @@
+{
+  "T1": {
+    "html": "T1.html",
+    "mode": "screenshot",
+    "console_errors": [],
+    "page_errors": [],
+    "external_requests": [],
+    "seek_errors": [],
+    "rendered_at": "2026-11-18 03:22:34",
+    "doc_size": {
+      "scrollW": 1080,
+      "scrollH": 1350
+    },
+    "outputs": [
+      "T1.png"
+    ],
+    "ok": true,
+    "render_s": 1.8
+  },
+  "T2": {
+    "html": "T2.html",
+    "mode": "seek",
+    "console_errors": [],
+    "page_errors": [],
+    "external_requests": [],
+    "seek_errors": [],
+    "rendered_at": "2026-11-18 03:22:36",
+    "doc_size": {
+      "scrollW": 1920,
+      "scrollH": 1080
+    },
+    "has_seek": true,
+    "seek_repeatable": true,
+    "seek_frozen_after_600ms": true,
+    "frames": 600,
+    "seek_failed_frames": 0,
+    "capture_s": 45.5,
+    "outputs": [
+      "T2.mp4",
+      "T2.sheet.jpg"
+    ],
+    "ok": true,
+    "render_s": 53.7
+  },
+  "T3": {
+    "html": "T3.html",
+    "mode": "seek",
+    "console_errors": [],
+    "page_errors": [],
+    "external_requests": [],
+    "seek_errors": [],
+    "rendered_at": "2026-11-18 03:23:30",
+    "doc_size": {
+      "scrollW": 1920,
+      "scrollH": 1080
+    },
+    "has_seek": true,
+    "seek_repeatable": true,
+    "seek_frozen_after_600ms": true,
+    "frames": 240,
+    "seek_failed_frames": 0,
+    "capture_s": 21.6,
+    "outputs": [
+      "T3.mp4",
+      "T3.sheet.jpg"
+    ],
+    "ok": true,
+    "render_s": 26.2
+  }
+}

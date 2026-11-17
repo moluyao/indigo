@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>山野咖啡 · Logo 开场</title>
+<style>
+  html,body{margin:0;padding:0;background:#000;overflow:hidden;width:100%;height:100%;}
+  #stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden;background:#000;}
+  #stage svg{position:absolute;left:0;top:0;}
+  #grain{position:absolute;inset:0;pointer-events:none;opacity:.07;mix-blend-mode:screen;}
+</style>
+</head>
+<body>
+<div id="stage">
+<svg id="s" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <radialGradient id="bgG" gradientUnits="userSpaceOnUse" cx="960" cy="470" r="1150">
+      <stop offset="0" stop-color="#3b2a1d"/>
+      <stop offset="0.45" stop-color="#24180f"/>
+      <stop offset="1" stop-color="#0e0906"/>
+    </radialGradient>
+    <radialGradient id="glowG">
+      <stop offset="0" stop-color="#f3a35a" stop-opacity=".55"/>
+      <stop offset=".45" stop-color="#e07a35" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#e07a35" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="beanG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f0a052"/>
+      <stop offset="1" stop-color="#c25a1f"/>
+    </linearGradient>
+    <clipPath id="aboveRim"><rect x="0" y="0" width="1920" height="500"/></clipPath>
+    <path id="textRing" d="M 960 460 m -270 0 a 270 270 0 1 1 540 0 a 270 270 0 1 1 -540 0"/>
+  </defs>
+
+  <rect id="bg" x="0" y="0" width="1920" height="1080" fill="url(#bgG)"/>
+
+  <g id="world">
+    <circle id="glow" cx="878" cy="360" r="210" fill="url(#glowG)"/>
+
+    <g clip-path="url(#aboveRim)">
+      <g id="bean">
+        <ellipse cx="0" cy="0" rx="34" ry="46" fill="url(#beanG)"/>
+        <path d="M 2 -40 C -16 -18, 16 14, -2 40" fill="none" stroke="#2a1c12" stroke-width="5" stroke-linecap="round"/>
+      </g>
+    </g>
+
+    <!-- mountain cut-out (same gradient as background, so it hides the rising bean) -->
+    <path id="mFill" d="M 800 500 L 865 425 L 900 455 L 975 355 L 1030 410 L 1060 388 L 1120 500 Z" fill="url(#bgG)"/>
+    <path id="ridge" class="draw" d="M 800 500 L 865 425 L 900 455 L 975 355 L 1030 410 L 1060 388 L 1120 500"
+          fill="none" stroke="#efe3cf" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path id="mist1" d="" fill="none" stroke="#efe3cf" stroke-width="3" stroke-linecap="round"/>
+    <path id="mist2" d="" fill="none" stroke="#efe3cf" stroke-width="3" stroke-linecap="round"/>
+
+    <line id="rim" x1="960" y1="500" x2="960" y2="500" stroke="#efe3cf" stroke-width="6" stroke-linecap="round"/>
+    <path id="bowl" class="draw" d="M 800 500 C 806 572, 868 615, 960 615 C 1052 615, 1114 572, 1120 500"
+          fill="none" stroke="#efe3cf" stroke-width="6" stroke-linecap="round"/>
+    <path id="handle" class="draw" d="M 1114 532 C 1168 524, 1176 584, 1090 586"
+          fill="none" stroke="#efe3cf" stroke-width="6" stroke-linecap="round"/>
+    <path id="saucer" class="draw" d="M 850 642 L 1070 642"
+          fill="none" stroke="#efe3cf" stroke-width="6" stroke-linecap="round"/>
+
+    <circle id="ring" class="draw" cx="960" cy="460" r="236" fill="none" stroke="#efe3cf" stroke-width="3"
+            transform="rotate(-90 960 460)"/>
+    <g id="ringTextG">
+      <text font-family="'SF Mono',Consolas,Menlo,monospace" font-size="19" fill="#efe3cf" letter-spacing="2">
+        <textPath href="#textRing" id="tp" textLength="1680" lengthAdjust="spacing">SHANYE COFFEE · 山野咖啡 · ROASTED IN THE HILLS · 一杯山野 · EST. 2026 ·</textPath>
+      </text>
+    </g>
+    <circle id="dotTop" cx="960" cy="224" r="5" fill="#e08a3c"/>
+
+    <g id="word" font-family="'Songti SC','STSong','Noto Serif CJK SC','Source Han Serif SC','SimSun',serif"
+       font-size="118" font-weight="700" fill="#efe3cf" text-anchor="middle">
+      <text id="c0" x="0" y="0">山</text>
+      <text id="c1" x="0" y="0">野</text>
+      <text id="c2" x="0" y="0">咖</text>
+      <text id="c3" x="0" y="0">啡</text>
+    </g>
+    <line id="ruleL" x1="0" y1="0" x2="0" y2="0" stroke="#e08a3c" stroke-width="2"/>
+    <line id="ruleR" x1="0" y1="0" x2="0" y2="0" stroke="#e08a3c" stroke-width="2"/>
+    <text id="sub" x="960" y="944" text-anchor="middle" font-family="'SF Mono',Consolas,Menlo,monospace"
+          font-size="25" letter-spacing="12" fill="#e9d9c0">SHANYE COFFEE</text>
+  </g>
+
+  <rect id="fade" x="0" y="0" width="1920" height="1080" fill="#000"/>
+</svg>
+<canvas id="grain" width="480" height="270"></canvas>
+</div>
+<script>
+(function(){
+  var DUR=8000;
+  function $(id){return document.getElementById(id);}
+  function clamp(x,a,b){a=a===undefined?0:a;b=b===undefined?1:b;return Math.min(b,Math.max(a,x));}
+  function P(t,a,b){return clamp((t-a)/(b-a));}
+  function eo(x){return 1-Math.pow(1-x,3);}
+  function eo5(x){return 1-Math.pow(1-x,5);}
+  function eio(x){return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;}
+  function lerp(a,b,x){return a+(b-a)*x;}
+
+  // seeded grain (static, deterministic)
+  (function(){
+    var seed=88021;function R(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}
+    var g=$('grain'),c=g.getContext('2d'),im=c.createImageData(480,270);
+    for(var i=0;i<im.data.length;i+=4){var v=R()*255|0;im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255;}
+    c.putImageData(im,0,0);g.style.width='1920px';g.style.height='1080px';
+  })();
+
+  // prepare stroke-draw lengths
+  var draws={};
+  ['ridge','bowl','handle','saucer','ring'].forEach(function(id){
+    var e=$(id),L=e.getTotalLength?e.getTotalLength():1000;
+    if(id==='ring')L=2*Math.PI*236;
+    draws[id]=L;e.setAttribute('stroke-dasharray',L+' '+L);e.setAttribute('stroke-dashoffset',L);
+  });
+  function draw(id,p){var L=draws[id];$(id).setAttribute('stroke-dashoffset',(L*(1-p)).toFixed(2));$(id).style.opacity=p>0?1:0;}
+
+  function wave(x0,x1,y,amp,wl,phase){
+    var d='';for(var x=x0;x<=x1;x+=4){var yy=y+amp*Math.sin((x/wl)*Math.PI*2+phase);d+=(x===x0?'M ':' L ')+x+' '+yy.toFixed(2);}return d;
+  }
+
+  var CH=[{dx:-240},{dx:-80},{dx:80},{dx:240}];
+
+  function render(ms){
+    var t=clamp(ms,0,DUR)/1000;
+
+    // opening from black, slow camera push
+    $('fade').setAttribute('opacity',(1-eo(P(t,0,0.7))).toFixed(3));
+    var z=lerp(1.0,1.035,eio(P(t,0,8)));
+    $('world').setAttribute('transform','translate(960 560) scale('+z.toFixed(4)+') translate(-960 -560)');
+
+    // 1. cup rim / horizon line opens from centre
+    var r=eo5(P(t,0.4,1.3)), hw=160*r;
+    $('rim').setAttribute('x1',(960-hw).toFixed(2));$('rim').setAttribute('x2',(960+hw).toFixed(2));
+    $('rim').style.opacity=r>0?1:0;
+
+    // 2. ridge draws left -> right
+    draw('ridge',eio(P(t,1.0,2.3)));
+
+    // 3. cup body, handle, saucer
+    draw('bowl',eio(P(t,1.6,2.6)));
+    draw('handle',eo(P(t,2.2,2.9)));
+    draw('saucer',eo(P(t,2.4,3.0)));
+
+    // 4. bean-sun rises behind mountain
+    var sp=eo(P(t,2.2,3.8));
+    var by=lerp(560,362,sp), rot=lerp(-60,-28,sp);
+    $('bean').setAttribute('transform','translate(878 '+by.toFixed(2)+') rotate('+rot.toFixed(2)+')');
+    var gp=eo(P(t,2.6,4.2));
+    var pulse=1+0.04*Math.sin(Math.max(0,t-4.2)*2.2)*P(t,4.2,5);
+    $('glow').setAttribute('cy',by.toFixed(2));
+    $('glow').setAttribute('r',(210*pulse).toFixed(2));
+    $('glow').setAttribute('opacity',gp.toFixed(3));
+
+    // 5. mist / steam drifting across the mountain foot
+    var ma=eo(P(t,3.0,4.0));
+    var drift=t*14;
+    var m1x0=822+18*(1-ma), m2x0=972-18*(1-ma);
+    $('mist1').setAttribute('d',wave(m1x0,m1x0+120*ma+0.1,468,3.2,46,-drift*0.14));
+    $('mist2').setAttribute('d',wave(m2x0,m2x0+110*ma+0.1,480,3.2,46,drift*0.12+1.4));
+    $('mist1').setAttribute('opacity',(0.55*ma).toFixed(3));
+    $('mist2').setAttribute('opacity',(0.4*ma).toFixed(3));
+    $('mist1').setAttribute('transform','translate('+(Math.sin(t*0.9)*6).toFixed(2)+' 0)');
+    $('mist2').setAttribute('transform','translate('+(-Math.sin(t*0.8)*6).toFixed(2)+' 0)');
+
+    // 6. ring draws, text ring rotates into place
+    draw('ring',eio(P(t,3.3,4.6)));
+    var tr=eo(P(t,3.9,5.2));
+    $('ringTextG').setAttribute('opacity',(0.72*tr).toFixed(3));
+    $('ringTextG').setAttribute('transform','rotate('+(lerp(-50,0,tr)+t*1.2).toFixed(3)+' 960 460)');
+    var dp=eo(P(t,4.4,4.8));
+    $('dotTop').setAttribute('opacity',dp.toFixed(3));
+    $('dotTop').setAttribute('r',(5*lerp(0.2,1,dp)).toFixed(2));
+
+    // 7. wordmark, staggered, tracking settles
+    for(var i=0;i<4;i++){
+      var st=4.6+i*0.16, p=eo(P(t,st,st+0.9));
+      var trk=lerp(1.25,1,eo(P(t,4.6,6.0)));
+      var x=960+CH[i].dx*trk, y=868+28*(1-p);
+      var e=$('c'+i);
+      e.setAttribute('x',x.toFixed(2));e.setAttribute('y',y.toFixed(2));
+      e.setAttribute('opacity',p.toFixed(3));
+    }
+
+    // 8. rules + sub line
+    var rp=eo5(P(t,5.6,6.6));
+    var a=215, w=150*rp;
+    $('ruleL').setAttribute('x1',(960-a).toFixed(2));$('ruleL').setAttribute('x2',(960-a-w).toFixed(2));
+    $('ruleR').setAttribute('x1',(960+a).toFixed(2));$('ruleR').setAttribute('x2',(960+a+w).toFixed(2));
+    ['ruleL','ruleR'].forEach(function(id){$(id).setAttribute('y1',935);$(id).setAttribute('y2',935);$(id).setAttribute('opacity',rp>0?1:0);});
+    var sa=eo(P(t,5.8,6.6));
+    $('sub').setAttribute('opacity',sa.toFixed(3));
+    $('sub').setAttribute('letter-spacing',lerp(22,12,sa).toFixed(2));
+  }
+
+  var stage=$('stage');
+  function fit(){
+    var s=Math.min(window.innerWidth/1920,window.innerHeight/1080);
+    stage.style.transform='translate('+((window.innerWidth-1920*s)/2)+'px,'+((window.innerHeight-1080*s)/2)+'px) scale('+s+')';
+  }
+  window.addEventListener('resize',fit);fit();
+
+  var paused=false,start=null;
+  function loop(now){
+    if(paused)return;
+    if(start===null)start=now;
+    var ms=Math.min(DUR,now-start);render(ms);
+    if(ms<DUR)requestAnimationFrame(loop);
+  }
+  window.__seek=function(ms){paused=true;render(Number(ms)||0);};
+  render(0);requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

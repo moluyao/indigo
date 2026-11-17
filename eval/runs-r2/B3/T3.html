@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>山野咖啡 · Logo 开场</title>
+<style>
+  html,body{margin:0;padding:0;background:#141D18;overflow:hidden}
+  canvas{display:block;width:1920px;height:1080px}
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function(){
+const W=1920,H=1080,DUR=8000;
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const F='"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif';
+const L='"Avenir Next","Futura","Segoe UI","Helvetica Neue",Arial,sans-serif';
+const CREAM='#EFE6D2', COFFEE='#B8743F', SUN='#E9B566', MUTED='rgba(239,230,210,.55)';
+const cl=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const p=(t,a,b)=>cl((t-a)/(b-a));
+const lerp=(a,b,k)=>a+(b-a)*k;
+const eo=x=>1-Math.pow(1-x,3);
+const eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const back=x=>{const c1=1.4,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2);};
+
+/* seeded rng */
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const rnd=mulberry(20261118);
+const PARTS=[];
+for(let i=0;i<110;i++) PARTS.push({x:rnd()*W,y:rnd()*H,v:8+rnd()*26,r:.6+rnd()*1.8,ph:rnd()*6.283,sw:10+rnd()*30,f:.3+rnd()*.7});
+
+/* static grain (seeded) */
+const grain=document.createElement('canvas'); grain.width=W/2; grain.height=H/2;
+(function(){const g=grain.getContext('2d'),im=g.createImageData(W/2,H/2),r=mulberry(77);
+  for(let i=0;i<im.data.length;i+=4){const v=r()*255;im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255;}
+  g.putImageData(im,0,0);})();
+
+/* geometry in logo units (width = 1, rim at y = 0) */
+const RIDGE=[[0,0],[.16,-.12],[.27,-.05],[.47,-.36],[.62,-.14],[.74,-.22],[1,0]];
+function bez(a,b,c,d,n){const o=[];for(let i=0;i<=n;i++){const s=i/n,m=1-s;o.push([m*m*m*a[0]+3*m*m*s*b[0]+3*m*s*s*c[0]+s*s*s*d[0],m*m*m*a[1]+3*m*m*s*b[1]+3*m*s*s*c[1]+s*s*s*d[1]]);}return o;}
+const BOWL=bez([0,0],[.03,.56],[.97,.56],[1,0],80);
+const BOWL_L=BOWL.slice(0,41), BOWL_R=BOWL.slice(40).reverse();
+const HANDLE=bez([.955,.17],[1.15,.12],[1.15,.36],[.865,.29],40);
+const FOOT=[[.33,.48],[.67,.48]];
+
+let frame={cx:960,cy:540,w:1400};
+const tp=([u,v])=>[frame.cx+(u-.5)*frame.w, frame.cy+v*frame.w];
+
+function poly(pts,frac){
+  if(frac<=0) return;
+  const P=pts.map(tp); let tot=0; const ls=[0];
+  for(let i=1;i<P.length;i++){tot+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);ls.push(tot);}
+  const tg=tot*Math.min(frac,1);
+  ctx.beginPath(); ctx.moveTo(P[0][0],P[0][1]);
+  for(let i=1;i<P.length;i++){
+    if(ls[i]<=tg){ctx.lineTo(P[i][0],P[i][1]);}
+    else{const f=(tg-ls[i-1])/(ls[i]-ls[i-1]||1);ctx.lineTo(lerp(P[i-1][0],P[i][0],f),lerp(P[i-1][1],P[i][1],f));break;}
+  }
+  ctx.stroke();
+}
+
+function spaced(str,cx,y,font,track,color,alphaFn,yOff){
+  ctx.font=font;
+  const ws=[...str].map(ch=>ctx.measureText(ch).width);
+  const tot=ws.reduce((a,b)=>a+b,0)+track*(ws.length-1);
+  let x=cx-tot/2;
+  [...str].forEach((ch,i)=>{
+    const a=alphaFn?alphaFn(i):1;
+    if(a>0){ctx.save();ctx.globalAlpha*=a;ctx.fillStyle=color;ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.fillText(ch,x,y+(yOff?yOff(i):0));ctx.restore();}
+    x+=ws[i]+track;
+  });
+  return tot;
+}
+
+function render(t){
+  ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha=1;
+  // background
+  const bg=ctx.createRadialGradient(960,470,40,960,540,1150);
+  bg.addColorStop(0,'#2A3D32'); bg.addColorStop(.55,'#1C2921'); bg.addColorStop(1,'#0F1612');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+
+  // particles (mountain mist / dust)
+  const pa=p(t,0,1200)*(1-.45*p(t,5000,7000));
+  for(const q of PARTS){
+    const ts=t/1000;
+    let y=((q.y-q.v*ts)%H+H)%H;
+    const x=q.x+Math.sin(q.ph+ts*.6)*q.sw;
+    const a=pa*q.f*(.35+.3*Math.sin(q.ph*3+ts*1.4));
+    if(a<=0) continue;
+    ctx.globalAlpha=a; ctx.fillStyle=CREAM;
+    ctx.beginPath(); ctx.arc(x,y,q.r,0,6.283); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+
+  // camera drift
+  const s=1.035-.035*eio(t/DUR);
+  ctx.translate(960,540); ctx.scale(s,s); ctx.translate(-960,-540);
+
+  // logo frame: big flat line -> mountains -> shrink into cup
+  const k=eio(p(t,2500,3500));
+  frame={cx:960,cy:lerp(540,392,k),w:lerp(1400,430,k)};
+  const h=back(p(t,1300,2500));
+  const ridge=RIDGE.map(([u,v])=>[u,v*h]);
+
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  const lw=lerp(3,7,k);
+
+  // sun behind
+  const sp=eo(p(t,4400,5500));
+  if(sp>0){
+    const c=tp([.6,lerp(.06,-.27,sp)]);
+    ctx.save();
+    const gl=ctx.createRadialGradient(c[0],c[1],0,c[0],c[1],frame.w*.3);
+    gl.addColorStop(0,'rgba(233,181,102,'+(.28*sp)+')'); gl.addColorStop(1,'rgba(233,181,102,0)');
+    ctx.fillStyle=gl; ctx.fillRect(c[0]-frame.w*.3,c[1]-frame.w*.3,frame.w*.6,frame.w*.6);
+    ctx.fillStyle=SUN; ctx.globalAlpha=cl(sp*2);
+    ctx.beginPath(); ctx.arc(c[0],c[1],frame.w*.072,0,6.283); ctx.fill();
+    ctx.restore();
+  }
+
+  // coffee body = area between mountain ridge and bowl
+  const fa=eo(p(t,4000,4500));
+  if(fa>0){
+    ctx.save(); ctx.globalAlpha=fa;
+    ctx.beginPath();
+    ridge.map(tp).forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));
+    for(let i=BOWL.length-1;i>=0;i--){const q=tp(BOWL[i]);ctx.lineTo(q[0],q[1]);}
+    ctx.closePath();
+    const top=tp([.5,-.36])[1], bot=tp([.5,.42])[1];
+    const g=ctx.createLinearGradient(0,top,0,bot);
+    g.addColorStop(0,'#C98A50'); g.addColorStop(1,'#8E5329');
+    ctx.fillStyle=g; ctx.fill();
+    // a second, softer ridge inside = distant range
+    ctx.globalAlpha=fa*.35; ctx.strokeStyle=CREAM; ctx.lineWidth=lw*.5;
+    ctx.beginPath();
+    [[.08,.07],[.3,-.02],[.42,.08],[.58,0],[.8,.09],[.92,.05]].map(tp).forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ridge stroke
+  ctx.strokeStyle=CREAM; ctx.lineWidth=lw;
+  ctx.globalAlpha=p(t,150,400);
+  poly(ridge,eio(p(t,200,1500)));
+  ctx.globalAlpha=1;
+
+  // cup
+  const cp=eio(p(t,3300,4300));
+  if(cp>0){
+    ctx.lineWidth=lw;
+    poly(BOWL_L,cp); poly(BOWL_R,cp);
+    poly(HANDLE,eo(p(t,3900,4500)));
+    poly(FOOT,eo(p(t,4000,4500)));
+  }
+
+  // wordmark
+  const chars='山野咖啡';
+  const tr=lerp(80,40,eo(p(t,4900,6300)));
+  spaced(chars,960,722,'500 112px '+F,tr,CREAM,
+    i=>eo(p(t,4900+i*170,4900+i*170+600)),
+    i=>22*(1-eo(p(t,4900+i*170,4900+i*170+700))));
+
+  const ea=eo(p(t,5800,6700));
+  if(ea>0){
+    ctx.save(); ctx.globalAlpha=ea;
+    const tw=spaced('SHANYE COFFEE',960,800,'600 28px '+L,lerp(26,15,ea),SUN);
+    const rl=90*ea, gap=34;
+    ctx.fillStyle='rgba(233,181,102,.7)';
+    ctx.fillRect(960-tw/2-gap-rl,790,rl,2);
+    ctx.fillRect(960+tw/2+gap,790,rl,2);
+    ctx.restore();
+  }
+  const ta=eo(p(t,6500,7300));
+  if(ta>0){
+    ctx.save(); ctx.globalAlpha=ta;
+    spaced('从山野，到一杯',960,878+10*(1-ta),'400 30px '+F,10,MUTED);
+    ctx.restore();
+  }
+
+  // light sweep across the wordmark
+  const sw=p(t,6900,7700);
+  if(sw>0&&sw<1){
+    ctx.save();
+    ctx.globalCompositeOperation='lighter';
+    const sx=lerp(560,1360,eio(sw));
+    const g=ctx.createLinearGradient(sx-120,0,sx+120,0);
+    g.addColorStop(0,'rgba(255,240,210,0)'); g.addColorStop(.5,'rgba(255,240,210,'+(.10*Math.sin(sw*Math.PI))+')'); g.addColorStop(1,'rgba(255,240,210,0)');
+    ctx.fillStyle=g; ctx.fillRect(sx-120,220,240,700);
+    ctx.restore();
+  }
+
+  // overlays
+  ctx.setTransform(1,0,0,1,0,0);
+  const vg=ctx.createRadialGradient(960,540,420,960,540,1180);
+  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.55)');
+  ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+  ctx.globalAlpha=.05; ctx.globalCompositeOperation='overlay';
+  ctx.drawImage(grain,0,0,W,H);
+  ctx.globalCompositeOperation='source-over';
+  const fi=1-p(t,0,500);
+  if(fi>0){ctx.globalAlpha=fi;ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);}
+  ctx.globalAlpha=1;
+}
+
+let start=null, seeking=false;
+function loop(now){
+  if(seeking) return;
+  if(start===null) start=now;
+  const t=Math.min(now-start,DUR);
+  render(t);
+  if(t<DUR) requestAnimationFrame(loop);
+}
+window.__seek=function(ms){ seeking=true; render(cl(+ms||0,0,DUR)); };
+render(0);
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

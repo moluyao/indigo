@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>音乐节海报</title>
+<style>
+  html,body{margin:0;height:100%;background:#cfd0cc}
+  body{display:flex;align-items:center;justify-content:center}
+  svg{display:block;width:min(100vw,calc(100vh*1080/1350));height:auto}
+  .t{font-family:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Heiti SC",sans-serif;font-weight:700}
+</style>
+</head>
+<body>
+<svg id="poster" viewBox="0 0 1080 1350" width="1080" height="1350" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="field"><rect x="70" y="70" width="940" height="890"/></clipPath>
+  </defs>
+
+  <!-- 纸 -->
+  <rect width="1080" height="1350" fill="#f1f1ee"/>
+
+  <!-- 声场：粉版（主舞台）先印，蓝版（第二舞台）multiply 叠印 -->
+  <g clip-path="url(#field)">
+    <g id="pink"></g>
+    <g id="blue" style="mix-blend-mode:multiply"></g>
+  </g>
+
+  <!-- 两个声源 -->
+  <circle cx="190" cy="250" r="30" fill="#ff48b0"/>
+  <circle cx="890" cy="800" r="30" fill="#0078bf"/>
+
+  <!-- 标签：纸色底框，双色叠印深色字 -->
+  <g class="t" font-size="30" fill="#0b2a7a">
+    <rect x="232" y="227" width="112" height="46" fill="#f1f1ee"/>
+    <text x="242" y="261">主舞台</text>
+    <rect x="696" y="777" width="146" height="46" fill="#f1f1ee"/>
+    <text x="706" y="811">第二舞台</text>
+  </g>
+
+  <!-- 唯一的例外：你在这里 -->
+  <g>
+    <circle cx="540" cy="525" r="22" fill="#f1f1ee" stroke="#0b2a7a" stroke-width="4"/>
+    <circle cx="540" cy="525" r="10" fill="#0b2a7a"/>
+    <rect x="574" y="503" width="330" height="44" fill="#f1f1ee"/>
+    <text class="t" x="584" y="535" font-size="28" fill="#0b2a7a">你在这里，两边都听得见</text>
+  </g>
+
+  <!-- 标题：粉版、蓝版各印一次，故意错位 -->
+  <g class="t" font-size="240" font-weight="900">
+    <text x="76" y="1244" fill="#ff48b0">音乐节</text>
+    <text x="70" y="1240" fill="#0078bf" style="mix-blend-mode:multiply">音乐节</text>
+  </g>
+
+  <!-- 待填栏：不编造名称、日期、地点、阵容 -->
+  <g class="t" font-size="28" fill="#0b2a7a">
+    <text x="840" y="1100">日期</text>
+    <rect x="906" y="1098" width="104" height="3" fill="#0b2a7a"/>
+    <text x="840" y="1170">地点</text>
+    <rect x="906" y="1168" width="104" height="3" fill="#0b2a7a"/>
+    <text x="840" y="1240">阵容</text>
+    <rect x="906" y="1238" width="104" height="3" fill="#0b2a7a"/>
+  </g>
+</svg>
+
+<script>
+(function(){
+  var NS = "http://www.w3.org/2000/svg";
+  // 同心声波：间距固定，墨量（线宽）随距离衰减——声音越远越弱
+  function rings(id, cx, cy, color){
+    var g = document.getElementById(id);
+    for (var r = 50; r <= 1500; r += 28){
+      var sw = Math.max(3, 14 - r * 0.0075);
+      var c = document.createElementNS(NS, "circle");
+      c.setAttribute("cx", cx);
+      c.setAttribute("cy", cy);
+      c.setAttribute("r", r);
+      c.setAttribute("fill", "none");
+      c.setAttribute("stroke", color);
+      c.setAttribute("stroke-width", sw.toFixed(2));
+      g.appendChild(c);
+    }
+  }
+  rings("pink", 190, 250, "#ff48b0");
+  // 蓝版相对粉版有 3px 套印偏差
+  rings("blue", 893, 802, "#0078bf");
+})();
+</script>
+</body>
+</html>

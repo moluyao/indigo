@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>音乐节 · 双色孔版海报</title>
+<style>
+  html,body{margin:0;padding:0;background:#EEF0EC}
+  #p{width:1080px;height:1350px;position:relative;overflow:hidden;background:#EEF0EC;isolation:isolate}
+  #p svg{position:absolute;left:0;top:0;mix-blend-mode:multiply}
+</style>
+</head>
+<body>
+<div id="p">
+  <svg id="yel" width="1080" height="1350" viewBox="0 0 1080 1350"></svg>
+  <svg id="blu" width="1080" height="1350" viewBox="0 0 1080 1350"></svg>
+</div>
+<script>
+// 双色孔版：黄版 + 蓝版，两版正片叠底，相遇处得到第三色（深橄榄绿）。
+// "没有墨"的地方在版上用纯白表示（叠底时等于不改变下面的颜色）。
+(function(){
+  var NS='http://www.w3.org/2000/svg';
+  var Y='#FFE800', B='#3255A4', NOINK='#FFFFFF';
+  var FONT='"Source Han Sans SC","Noto Sans CJK SC","PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif';
+  function rng(s){return function(){s|=0;s=s+0x6D2B79F5|0;var t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  var R=rng(20261118);
+  function el(tag,attrs,parent){var e=document.createElementNS(NS,tag);for(var k in attrs)e.setAttribute(k,attrs[k]);parent.appendChild(e);return e;}
+
+  // ---- 黄版：一颗被右边裁掉的大太阳，故意套不准（x+6, y-4）----
+  var yel=document.getElementById('yel');
+  var yg=el('g',{transform:'translate(6,-4)'},yel);
+  el('circle',{cx:720,cy:560,r:400,fill:Y},yg);
+
+  // ---- 蓝版 ----
+  var blu=document.getElementById('blu');
+  var bg=el('g',{},blu);
+
+  // 标题：只有真实的三个字
+  var t=el('text',{x:66,y:352,'font-size':300,'font-weight':900,fill:B,'letter-spacing':-6},bg);
+  t.setAttribute('style','font-family:'+FONT);
+  t.textContent='音乐节';
+
+  // 人群：远小近大，一排排往下，最后一排出血
+  var persons=[], y=884, r=8;
+  while(y<1440){
+    var step=2.25*r, x=-r+R()*step;
+    while(x<1080+r){
+      persons.push({x:x+(R()-0.5)*0.5*r, y:y+(R()-0.5)*0.4*r, r:r*(0.9+R()*0.2), arm:R()<0.16, side:R()<0.5?-1:1, lean:(R()-0.5)*0.6});
+      x+=step*(0.85+R()*0.3);
+    }
+    y+=r*1.3; r*=1.11;
+  }
+  persons.sort(function(a,b){return a.y-b.y;});
+  var crowd=el('g',{},bg);
+  persons.forEach(function(p){
+    var x=p.x, y=p.y, r=p.r, gap=0.22*r;
+    if(p.arm){
+      var sx=x+p.side*0.85*r, sy=y+1.5*r, hx=x+p.side*(1.35+p.lean)*r, hy=y-2.7*r;
+      var d='M'+sx+','+sy+' L'+hx+','+hy;
+      el('path',{d:d,stroke:NOINK,'stroke-width':0.58*r+2*gap,'stroke-linecap':'round',fill:'none'},crowd);
+      el('path',{d:d,stroke:B,'stroke-width':0.58*r,'stroke-linecap':'round',fill:'none'},crowd);
+    }
+    var body='M'+(x-1.4*r)+','+(y+3.6*r)+' C'+(x-1.4*r)+','+(y+1.6*r)+' '+(x-0.9*r)+','+(y+1.05*r)+' '+x+','+(y+1.05*r)+' C'+(x+0.9*r)+','+(y+1.05*r)+' '+(x+1.4*r)+','+(y+1.6*r)+' '+(x+1.4*r)+','+(y+3.6*r)+' Z';
+    el('path',{d:body,fill:B,stroke:NOINK,'stroke-width':gap,'stroke-linejoin':'round','paint-order':'stroke'},crowd);
+    el('circle',{cx:x,cy:y,r:r,fill:B,stroke:NOINK,'stroke-width':gap,'paint-order':'stroke'},crowd);
+  });
+
+  // 加盖区：海报批量印刷时留白，由各场主办方盖上日期与地点（蓝版上挖空成纸色）
+  var box=el('g',{},bg);
+  el('rect',{x:70,y:1150,width:440,height:130,fill:NOINK,stroke:B,'stroke-width':4},box);
+  [['日期',1205],['地点',1257]].forEach(function(row){
+    var tx=el('text',{x:98,y:row[1],'font-size':32,'font-weight':700,fill:B},box);
+    tx.setAttribute('style','font-family:'+FONT);
+    tx.textContent=row[0];
+    el('line',{x1:178,y1:row[1]+4,x2:482,y2:row[1]+4,stroke:B,'stroke-width':3},box);
+  });
+})();
+</script>
+</body>
+</html>

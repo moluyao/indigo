@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>山野咖啡 · 开场</title>
+<style>
+  html,body{margin:0;height:100%;background:#120b08;overflow:hidden}
+  canvas{position:absolute;left:0;top:0;display:block}
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function(){
+  var DUR = 8000, W = 1920, H = 1080;
+  var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  function fit(){
+    var k = Math.min(innerWidth/W, innerHeight/H);
+    cv.style.width = (W*k)+'px'; cv.style.height = (H*k)+'px';
+    cv.style.left = ((innerWidth-W*k)/2)+'px'; cv.style.top = ((innerHeight-H*k)/2)+'px';
+  }
+  addEventListener('resize', fit); fit();
+
+  // ---------- 工具 ----------
+  function bez(x1,y1,x2,y2){
+    function X(t){return 3*x1*t*(1-t)*(1-t)+3*x2*t*t*(1-t)+t*t*t;}
+    function Y(t){return 3*y1*t*(1-t)*(1-t)+3*y2*t*t*(1-t)+t*t*t;}
+    return function(x){
+      if (x<=0) return 0; if (x>=1) return 1;
+      var lo=0, hi=1, m;
+      for (var i=0;i<24;i++){ m=(lo+hi)/2; if (X(m)<x) lo=m; else hi=m; }
+      return Y((lo+hi)/2);
+    };
+  }
+  var dock  = bez(.31,.69,.64,1);
+  var sink  = bez(.53,0,.67,1);
+  var carry = bez(.45,0,.55,1);
+  function seg(t,a,b){ return t<=a?0:(t>=b?1:(t-a)/(b-a)); }
+  function lerp(a,b,p){ return a+(b-a)*p; }
+  function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; var t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+  var rnd = mulberry32(20261118);
+
+  // ---------- 颜色（全部取自粉层） ----------
+  var DRY = '#93694a', WET = '#36211a', FOAM = '#c9a77c', WATER = '#eadcc4', TEXT = '#dcc3a0';
+
+  // ---------- 地形：所有等高线共用一组谐波，避免互相穿插 ----------
+  var HS = [], sum = 0;
+  for (var i=2;i<=6;i++){ var a=(0.5+rnd())/i; HS.push({k:i,a:a,p:rnd()*Math.PI*2}); sum+=a; }
+  HS.forEach(function(h){ h.a/=sum; });
+  var R0 = 26, SP = 46, NR = 24;
+  var LOC = [];
+  for (var k=0;k<NR;k++) LOC.push({k:3+Math.floor(rnd()*5), a:0.008, p:rnd()*Math.PI*2});
+  function base(k){ return R0 + k*SP; }
+
+  // 场坐标里的一点：rho = 名义半径，th = 角度
+  function pt(rho, th, drift, loc){
+    var kf = Math.max(0,(rho-R0)/SP);
+    var amp = 0.04 + 0.0055*kf;
+    var s = 0;
+    for (var i=0;i<HS.length;i++){ var h=HS[i]; s += h.a*Math.sin(h.k*th + h.p + drift*h.k*0.5); }
+    if (loc) s += loc.a/amp*Math.sin(loc.k*th + loc.p);
+    var r = rho*(1+amp*s);
+    return [kf*7 + r*Math.cos(th), kf*3 + r*Math.sin(th)];
+  }
+
+  // ---------- 注水：等速阿基米德螺旋 ----------
+  var POUR_END = 2.8, TURNS = 3, RMAX = 520;
+  function pourW(t){ var u=seg(t,0,POUR_END); return (Math.sqrt(u+0.01)-0.1)/(Math.sqrt(1.01)-0.1); }
+  function pourR(t){ return 30 + (RMAX-30)*pourW(t); }
+  function pourTh(t){ return -Math.PI/2 + 2*Math.PI*TURNS*pourW(t); }
+  function wetR(t){
+    if (t <= POUR_END) return pourR(t) + 40;
+    return lerp(RMAX+40, 2600, dock(seg(t, POUR_END, 3.9)));
+  }
+  // 每条等高线在湿锋经过时开始绕出
+  var REV = [];
+  for (var k=0;k<NR;k++){
+    var tk = 3.9;
+    for (var tt=0; tt<=3.9; tt+=0.004){ if (wetR(tt) >= base(k)) { tk = tt; break; } }
+    var a0 = tk <= POUR_END ? pourTh(tk) : pourTh(POUR_END) + k*0.9;
+    REV.push({t:tk, a0:a0});
+  }
+
+  function breathe(t){ return 1 + 0.03*Math.sin(Math.PI*sink(seg(t,3.0,4.2))); }
+
+  var FONT = '700 150px "PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Heiti SC",sans-serif';
+  var CHARS = ['山','野','咖','啡'];
+
+  // ---------- 渲染：只依赖 ms ----------
+  function render(ms){
+    var t = ms/1000;
+    var drift = 0.05*t;
+    var b = breathe(t);
+
+    // 镜头
+    var p = carry(seg(t,4.2,5.5));
+    var sc = Math.pow(0.27, p);
+    var ax = 90*p, ay = 40*p;
+    var sx = lerp(1010, 585, p), sy = lerp(520, 540, p);
+    var lw = 1/sc; // 屏幕像素恒定线宽
+
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.fillStyle = t >= 3.9 ? WET : DRY;
+    ctx.fillRect(0,0,W,H);
+
+    ctx.setTransform(sc,0,0,sc, sx-ax*sc, sy-ay*sc);
+
+    // 湿区
+    if (t < 3.9){
+      var rw = wetR(t)*b;
+      ctx.beginPath();
+      for (var i=0;i<=240;i++){
+        var th = i/240*Math.PI*2, q = pt(rw, th, drift, null);
+        if (i===0) ctx.moveTo(q[0],q[1]); else ctx.lineTo(q[0],q[1]);
+      }
+      ctx.closePath(); ctx.fillStyle = WET; ctx.fill();
+    }
+
+    // 等高线（滤杯口裁切）
+    ctx.save();
+    var cq = dock(seg(t,4.9,5.7));
+    if (t >= 4.9){
+      ctx.beginPath(); ctx.arc(90,40, lerp(1300,760,cq), 0, Math.PI*2); ctx.clip();
+    }
+    ctx.strokeStyle = FOAM; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    for (var k=0;k<NR;k++){
+      var R = REV[k];
+      var f = dock(seg(t, R.t, R.t+0.75));
+      if (f <= 0) continue;
+      var n = Math.max(3, Math.ceil(f*220));
+      ctx.beginPath();
+      for (var j=0;j<=n;j++){
+        var th = R.a0 + (j/n)*f*Math.PI*2;
+        var q = pt(base(k)*b, th, drift, LOC[k]);
+        if (j===0) ctx.moveTo(q[0],q[1]); else ctx.lineTo(q[0],q[1]);
+      }
+      if (f >= 1) ctx.closePath();
+      ctx.lineWidth = (k%4===0 ? 4.2 : 2.4)*lw;   // 每第 4 条为计曲线
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 滤杯口：一笔画出
+    var rp = dock(seg(t,4.95,5.75));
+    if (rp > 0){
+      ctx.beginPath();
+      ctx.arc(90,40,760, -Math.PI/2, -Math.PI/2 + rp*Math.PI*2);
+      ctx.strokeStyle = FOAM; ctx.lineWidth = 4*lw; ctx.lineCap = 'round'; ctx.stroke();
+    }
+
+    // 注水点 + 水流拖尾（替代运动模糊）
+    if (t < 3.1){
+      var head = Math.min(t, POUR_END);
+      var tail = Math.min(Math.max(0, t - 0.1), head);   // 停水后拖尾在 0.1s 内追上水点
+      var fade = 1 - seg(t, POUR_END, 3.1);
+      ctx.globalAlpha = 0.85*fade;
+      ctx.strokeStyle = WATER; ctx.lineWidth = 14*lw; ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (var i=0;i<=12;i++){
+        var ti = lerp(tail, head, i/12);
+        var q = pt(pourR(ti), pourTh(ti), drift, null);
+        if (i===0) ctx.moveTo(q[0],q[1]); else ctx.lineTo(q[0],q[1]);
+      }
+      ctx.stroke();
+      var hq = pt(pourR(head), pourTh(head), drift, null);
+      ctx.globalAlpha = fade;
+      ctx.fillStyle = WATER;
+      ctx.beginPath(); ctx.arc(hq[0],hq[1],11*lw,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 0.45*fade;
+      ctx.lineWidth = 2*lw;
+      ctx.beginPath(); ctx.arc(hq[0],hq[1],20*lw,0,Math.PI*2); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // 字标：四字依次升起
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.font = FONT; ctx.fillStyle = TEXT; ctx.textBaseline = 'alphabetic';
+    var X0 = 870, BL = 595, ADV = 172;
+    for (var i=0;i<4;i++){
+      var a = 5.3 + i*0.09;
+      var cp = dock(seg(t, a, a+0.6));
+      if (cp <= 0) continue;
+      var x = X0 + i*ADV;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(x-8, BL-145, 166, 180); ctx.clip();
+      ctx.fillText(CHARS[i], x, BL + (1-cp)*170);
+      ctx.restore();
+    }
+  }
+
+  // ---------- 播放与 seek ----------
+  var seeking = false, start = null;
+  function loop(now){
+    if (seeking) return;
+    if (start === null) start = now;
+    var ms = Math.min(DUR, now - start);
+    render(ms);
+    if (ms < DUR) requestAnimationFrame(loop);
+  }
+  window.__seek = function(ms){
+    seeking = true;
+    render(Math.max(0, Math.min(DUR, +ms || 0)));
+  };
+  render(0);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

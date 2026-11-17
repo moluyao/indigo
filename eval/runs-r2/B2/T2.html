@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>什么是复利 · 20 秒</title>
+<style>
+  html,body{margin:0;height:100%;background:#111;overflow:hidden;}
+  #c{position:absolute;left:0;top:0;transform-origin:0 0;}
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function(){
+const W = 1920, H = 1080, DUR = 20;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const SANS = "'PingFang SC','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif";
+const C = { bg:'#F6F1E7', ink:'#1F2233', sub:'#6B6F80', navy:'#2E3F6E', orange:'#EE9A3A', green:'#1FA06F', grid:'#E2DACB' };
+
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const eo = x => 1 - Math.pow(1 - x, 3);
+const eio = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const lerp = (a, b, x) => a + (b - a) * x;
+const fmt = n => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+const win = (t, a, b, fi = .5, fo = .5) => Math.min(seg(t, a, a + fi), fo > 0 ? 1 - seg(t, b - fo, b) : 1);
+function font(w, s) { ctx.font = `${w} ${s}px ${SANS}`; }
+
+// 多色一行文字：runs = [[text,color,weight?],...]
+function runs(list, x, y, size, align = 'left', alpha = 1) {
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  let total = 0;
+  for (const r of list) { font(r[2] || 500, size); total += ctx.measureText(r[0]).width; }
+  let cx = align === 'center' ? x - total / 2 : align === 'right' ? x - total : x;
+  for (const r of list) { font(r[2] || 500, size); ctx.fillStyle = r[1]; ctx.fillText(r[0], cx, y); cx += ctx.measureText(r[0]).width; }
+  ctx.restore();
+  return total;
+}
+function txt(s, x, y, size, color, weight = 500, align = 'left', alpha = 1) {
+  return runs([[s, color, weight]], x, y, size, align, alpha);
+}
+function rrect(x, y, w, h, r) {
+  r = Math.min(r, h / 2, w / 2);
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+// ---------- 场景 1：题目 ----------
+function scene1(t) {
+  const a = win(t, 0, 3.3, .45, .4); if (a <= 0) return;
+  ctx.save(); ctx.globalAlpha = a;
+  const s = 0.9 + 0.1 * eo(seg(t, 0, .9));
+  ctx.translate(960, 470); ctx.scale(s, s);
+  txt('复利', 0, 0, 210, C.ink, 800, 'center');
+  ctx.fillStyle = C.orange;
+  const uw = 380 * eo(seg(t, .45, 1.2));
+  rrect(-uw / 2, 40, uw, 14, 7); ctx.fill();
+  ctx.restore();
+
+  // 副标题：利息，也会生利息
+  const b = eo(seg(t, .9, 1.6));
+  ctx.save(); ctx.globalAlpha = a * b; ctx.translate(0, (1 - b) * 20);
+  runs([['利息', C.orange, 700], ['，也会再生出', C.sub, 500], ['利息', C.green, 700]], 960, 640, 62, 'center');
+  ctx.restore();
+
+  // 小动画：一个币生出一个小币
+  const c = seg(t, 1.6, 2.6);
+  if (c > 0) {
+    ctx.save(); ctx.globalAlpha = a;
+    const bx = 960, by = 780;
+    ctx.fillStyle = C.orange; ctx.beginPath(); ctx.arc(bx - 40, by, 26 * eo(clamp(c * 3)), 0, Math.PI * 2); ctx.fill();
+    const c2 = eo(seg(c, .35, 1));
+    ctx.fillStyle = C.green; ctx.beginPath(); ctx.arc(bx - 40 + 70 * c2, by, 16 * c2, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ---------- 场景 2：前三年怎么滚 ----------
+const P = 10000, R = 0.10;
+const comp = n => P * Math.pow(1 + R, n);
+const simp = n => P * (1 + R * n);
+
+function scene2(t) {
+  const a = win(t, 3.1, 9.7, .5, .5); if (a <= 0) return;
+  const u = t - 3.1;
+  ctx.save(); ctx.globalAlpha = a;
+
+  runs([['假设存 ', C.ink, 700], ['10,000 元', C.navy, 800], ['，年利率 ', C.ink, 700], ['10%', C.orange, 800], ['，利息不取出来', C.ink, 700]], 160, 170, 56);
+
+  const k = 0.036, base = 880, bw = 190, xs = [380, 680, 980, 1280];
+  const times = [[.3, .9], [1.2, 1.9], [2.4, 3.1], [3.6, 4.3]];
+  const names = ['开始', '第 1 年', '第 2 年', '第 3 年'];
+
+  // 基线
+  ctx.fillStyle = C.ink; ctx.globalAlpha = a * seg(u, 0, .4);
+  ctx.fillRect(250, base, 1260, 3);
+  ctx.globalAlpha = a;
+
+  for (let n = 0; n < 4; n++) {
+    const g = eo(seg(u, times[n][0], times[n][1]));
+    if (g <= 0) continue;
+    const x = xs[n] - bw / 2;
+    let y = base;
+    // 本金
+    let h = P * k * g; ctx.fillStyle = C.navy; ctx.fillRect(x, y - h, bw, h); y -= h;
+    // 本金生的利息，每年一块
+    for (let j = 0; j < n; j++) {
+      const hh = P * R * k * g;
+      ctx.fillStyle = C.orange; ctx.fillRect(x, y - hh + 2, bw, hh - 2); y -= hh;
+    }
+    // 利息生的利息
+    const extra = comp(n) - simp(n);
+    if (extra > 0) { const hh = extra * k * g; ctx.fillStyle = C.green; ctx.fillRect(x, y - hh, bw, hh); y -= hh; }
+    // 数值与年份
+    const la = seg(g, .7, 1);
+    txt(fmt(comp(n)), xs[n], y - 22, 42, C.ink, 800, 'center', la);
+    txt(names[n], xs[n], base + 54, 34, C.sub, 500, 'center', seg(g, 0, .3));
+  }
+
+  // 算式（逐年切换）
+  const eqs = [
+    [1.2, [['第 1 年利息：10,000 × 10% = ', C.ink], ['1,000', C.orange, 800]]],
+    [2.4, [['第 2 年利息：11,000 × 10% = ', C.ink], ['1,100', C.orange, 800], ['　多出的 100 是“去年的利息”生的', C.green, 700]]],
+    [3.6, [['第 3 年利息：12,100 × 10% = ', C.ink], ['1,210', C.orange, 800], ['　多出的 210，也是利息生的', C.green, 700]]],
+  ];
+  for (let i = 0; i < eqs.length; i++) {
+    const st = eqs[i][0], en = i < eqs.length - 1 ? eqs[i + 1][0] : 99;
+    const al = Math.min(seg(u, st, st + .3), 1 - seg(u, en - .15, en));
+    if (al > 0) runs(eqs[i][1], 160, 255 + (1 - eo(seg(u, st, st + .3))) * 14, 40, 'left', al);
+  }
+
+  // 图例
+  const lg = seg(u, .6, 1.1);
+  [[C.navy, '本金'], [C.orange, '本金生的利息'], [C.green, '利息生的利息']].forEach((it, i) => {
+    ctx.save(); ctx.globalAlpha = a * lg;
+    ctx.fillStyle = it[0]; rrect(1470, 640 + i * 66, 34, 34, 6); ctx.fill();
+    ctx.restore();
+    txt(it[1], 1522, 668 + i * 66, 32, C.ink, 500, 'left', lg);
+  });
+
+  // 提示：绿色那条几乎看不见
+  const cb = seg(u, 4.7, 5.2);
+  if (cb > 0) {
+    const gTop = base - comp(3) * k, gH = (comp(3) - simp(3)) * k, gy = gTop + gH / 2;
+    const pulse = 1 + 0.12 * Math.sin((u - 4.7) * 7);
+    ctx.save(); ctx.globalAlpha = a * cb;
+    ctx.strokeStyle = C.green; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.ellipse(1280, gy, 120 * pulse, 22 * pulse, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(1400 * 1, gy); ctx.lineTo(1400 + 60 * eo(cb), gy); ctx.stroke();
+    ctx.restore();
+    txt('绿色 = 利息的利息', 1470, gy - 8, 40, C.green, 800, 'left', cb);
+    txt('前几年小得几乎看不见……', 1470, gy + 46, 34, C.sub, 500, 'left', seg(u, 5.1, 5.6));
+  }
+  ctx.restore();
+}
+
+// ---------- 场景 3：拉长到 30 年 ----------
+function scene3(t) {
+  const a = win(t, 9.5, 16.0, .5, .5); if (a <= 0) return;
+  const v = t - 9.5;
+  ctx.save(); ctx.globalAlpha = a;
+
+  txt('……但把时间拉长到 30 年', 160, 150, 56, C.ink, 800);
+  txt('同样 10,000 元，同样 10%：橙色只拿本金的利息，绿色让利息继续生利息', 160, 210, 32, C.sub, 500);
+
+  const x0 = 260, x1 = 1400, yb = 920, yt = 300, YM = 180000;
+  const X = yr => x0 + (x1 - x0) * yr / 30;
+  const Y = val => yb - (yb - yt) * val / YM;
+
+  const ax = seg(v, 0, .5);
+  ctx.save(); ctx.globalAlpha = a * ax;
+  ctx.strokeStyle = C.grid; ctx.lineWidth = 2;
+  [0, 50000, 100000, 150000].forEach(val => {
+    ctx.beginPath(); ctx.moveTo(x0, Y(val)); ctx.lineTo(x1, Y(val)); ctx.stroke();
+  });
+  ctx.restore();
+  [[0, '0'], [50000, '5 万'], [100000, '10 万'], [150000, '15 万']].forEach(([val, s]) => txt(s, x0 - 22, Y(val) + 10, 28, C.sub, 500, 'right', ax));
+  [0, 10, 20, 30].forEach(yr => txt(yr === 0 ? '现在' : `第 ${yr} 年`, X(yr), yb + 48, 28, C.sub, 500, 'center', ax));
+
+  const p = eio(seg(v, .6, 4.4)), YR = 30 * p;
+  if (YR > 0) {
+    const steps = Math.max(2, Math.ceil(YR * 8));
+    // 中间差距面积
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) { const yr = YR * i / steps; i ? ctx.lineTo(X(yr), Y(comp(yr))) : ctx.moveTo(X(yr), Y(comp(yr))); }
+    for (let i = steps; i >= 0; i--) { const yr = YR * i / steps; ctx.lineTo(X(yr), Y(simp(yr))); }
+    ctx.closePath(); ctx.fillStyle = 'rgba(31,160,111,0.16)'; ctx.fill();
+    // 单利线
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.strokeStyle = C.orange; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(X(0), Y(simp(0))); ctx.lineTo(X(YR), Y(simp(YR))); ctx.stroke();
+    // 复利线
+    ctx.strokeStyle = C.green; ctx.lineWidth = 8;
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) { const yr = YR * i / steps; i ? ctx.lineTo(X(yr), Y(comp(yr))) : ctx.moveTo(X(yr), Y(comp(yr))); }
+    ctx.stroke();
+    // 端点
+    [[simp(YR), C.orange], [comp(YR), C.green]].forEach(([val, col]) => {
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(X(YR), Y(val), 12, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 6; ctx.stroke();
+    });
+  }
+
+  // 计数面板
+  const pa = seg(v, .4, .9);
+  txt(`第 ${Math.floor(YR + 1e-6)} 年`, 1500, 330, 40, C.ink, 800, 'left', pa);
+  runs([['只拿本金利息  ', C.sub, 500], ['¥' + fmt(simp(YR)), C.orange, 800]], 1500, 400, 34, 'left', pa);
+  runs([['利滚利  ', C.sub, 500], ['¥' + fmt(comp(YR)), C.green, 800]], 1500, 456, 34, 'left', pa);
+
+  // 途中注释
+  const n1 = seg(v, 2.0, 2.5) * (1 - seg(v, 4.6, 5.0));
+  txt('前 10 年：两条线差不多', X(10) - 40, Y(comp(10)) - 130, 30, C.sub, 600, 'left', n1);
+  const n2 = seg(v, 3.4, 3.9) * (1 - seg(v, 4.6, 5.0));
+  txt('后面：越滚越快', X(23) - 30, Y(comp(23)) - 10, 30, C.green, 700, 'right', n2);
+
+  // 结尾：差距括号
+  const e = eo(seg(v, 4.6, 5.2));
+  if (e > 0) {
+    const bx = X(30) + 34, ya = Y(simp(30)), yc = Y(comp(30));
+    ctx.save(); ctx.globalAlpha = a * e; ctx.strokeStyle = C.green; ctx.lineWidth = 4;
+    const ym = (ya + yc) / 2, hh = (ya - yc) / 2 * e;
+    ctx.beginPath(); ctx.moveTo(bx - 12, ym - hh); ctx.lineTo(bx, ym - hh); ctx.lineTo(bx, ym + hh); ctx.lineTo(bx - 12, ym + hh); ctx.stroke();
+    ctx.restore();
+    txt('4 万', X(30) - 26, ya + 50, 36, C.orange, 800, 'right', e);
+    txt('17.4 万', X(30) - 26, yc - 22, 40, C.green, 800, 'right', e);
+    txt('多出 13.4 万', bx + 26, ym + 6, 48, C.green, 900, 'left', e);
+    txt('全是“利息的利息”', bx + 26, ym + 60, 32, C.ink, 600, 'left', seg(v, 5.0, 5.5));
+  }
+  ctx.restore();
+}
+
+// ---------- 场景 4：记住三件事 ----------
+function scene4(t) {
+  const a = seg(t, 15.8, 16.3); if (a <= 0) return;
+  const w = t - 15.8;
+  ctx.save(); ctx.globalAlpha = a;
+  txt('一句话：复利 = 利息不取出来，继续生利息', 960, 250, 60, C.ink, 800, 'center');
+  const items = [
+    [C.navy, [['钱放得越久', C.ink, 700], ['，后面长得越快 —— ', C.sub], ['越早开始越好', C.navy, 800]]],
+    [C.orange, [['72 法则：', C.ink, 700], ['72 ÷ 年利率 ≈ 翻一倍要几年', C.sub], ['（10% → 约 7 年）', C.orange, 800]]],
+    [C.green, [['反过来也成立：', C.ink, 700], ['欠债不还，债也会', C.sub], ['利滚利', C.green, 800]]],
+  ];
+  items.forEach((it, i) => {
+    const p = eo(seg(w, .4 + i * .55, 1.0 + i * .55));
+    if (p <= 0) return;
+    const y = 430 + i * 150;
+    ctx.save(); ctx.globalAlpha = a * p; ctx.translate((1 - p) * 40, 0);
+    ctx.fillStyle = it[0]; ctx.beginPath(); ctx.arc(330, y - 18, 34, 0, Math.PI * 2); ctx.fill();
+    txt(String(i + 1), 330, y - 3, 40, '#fff', 800, 'center');
+    runs(it[1], 400, y, 46);
+    ctx.restore();
+  });
+  txt('示例为简化计算，仅作科普，不构成投资建议', 960, 1000, 24, C.sub, 400, 'center', seg(w, 2.0, 2.5));
+  ctx.restore();
+}
+
+function render(t) {
+  t = clamp(t, 0, DUR);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+  scene1(t); scene2(t); scene3(t); scene4(t);
+  // 底部进度条
+  ctx.fillStyle = 'rgba(31,34,51,0.08)'; ctx.fillRect(0, H - 8, W, 8);
+  ctx.fillStyle = C.orange; ctx.fillRect(0, H - 8, W * t / DUR, 8);
+}
+
+function fit() {
+  const s = Math.min(innerWidth / W, innerHeight / H);
+  cv.style.transform = `translate(${(innerWidth - W * s) / 2}px,${(innerHeight - H * s) / 2}px) scale(${s})`;
+}
+addEventListener('resize', fit); fit();
+
+let t0 = null, paused = false;
+window.__seek = ms => { paused = true; render(ms / 1000); };
+function loop(now) {
+  if (!paused) { if (t0 === null) t0 = now; render((now - t0) / 1000); }
+  requestAnimationFrame(loop);
+}
+render(0);
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

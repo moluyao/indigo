@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>复利：利息也会生利息</title>
+<style>
+  html,body{margin:0;padding:0;background:#E8EAE3;overflow:hidden}
+  canvas{display:block;width:100vw;height:56.25vw;max-height:100vh;max-width:177.78vh;margin:0 auto}
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function(){
+  var cv=document.getElementById('c'), ctx=cv.getContext('2d');
+  var DUR=20000;
+  var FONT='"PingFang SC","Microsoft YaHei","Noto Sans SC","Source Han Sans SC","Hiragino Sans GB",sans-serif';
+  var BG='#E8EAE3';
+  var C_INK=[31,35,32], C_GRAY=[166,170,159], C_BLUE=[36,69,201];
+  var C_INK_D=[198,201,192], C_GRAY_D=[213,216,208];
+  function rgb(c){return 'rgb('+Math.round(c[0])+','+Math.round(c[1])+','+Math.round(c[2])+')';}
+  function mix(a,b,k){return [a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k,a[2]+(b[2]-a[2])*k];}
+  function clamp(x){return x<0?0:x>1?1:x;}
+  function cb(x1,y1,x2,y2){return function(x){if(x<=0)return 0;if(x>=1)return 1;var lo=0,hi=1,t=x;for(var i=0;i<32;i++){t=(lo+hi)/2;var bx=3*(1-t)*(1-t)*t*x1+3*(1-t)*t*t*x2+t*t*t;if(bx<x)lo=t;else hi=t;}return 3*(1-t)*(1-t)*t*y1+3*(1-t)*t*t*y2+t*t*t;};}
+  var DOCK=cb(.31,.69,.64,1), LEAVE=cb(.36,0,.69,.31), CARRY=cb(.45,0,.55,1), SINK=cb(.53,0,.67,1);
+
+  // ---- 数学（真实计算，不是数据）：本金 100，年利率 10%（举例），30 年 ----
+  var A=[100]; for(var k=1;k<=30;k++) A[k]=A[k-1]*1.1;   // A[30] ≈ 1744.94
+  // 每年的利息 = 10（本金生的，灰） + (A[k-1]-100)*10%（利息生的，蓝）
+  var SEG=[{a:0,b:100,c:'ink'}];
+  for(k=1;k<=30;k++){SEG.push({a:A[k-1],b:A[k-1]+10,c:'gray'});SEG.push({a:A[k-1]+10,b:A[k],c:'blue'});}
+  var SIMPLE=[{a:0,b:100,c:'ink'},{a:100,b:400,c:'gray'}];
+
+  // ---- 金额关键帧 ----
+  var K=[];
+  K.push([1.0,1.6,100,110,DOCK]);
+  K.push([2.6,3.1,110,120,DOCK]);
+  K.push([3.35,3.75,120,121,SINK]);
+  var t=6.8, d=0.6/(1-Math.pow(0.9,28));
+  for(k=3;k<=30;k++){K.push([t,t+d*0.9,A[k-1],A[k],CARRY]);t+=d;d*=0.9;}   // 第 3–30 年：每年比上一年快 10%，6.8s → 12.8s
+  function amount(T){var a=100;for(var i=0;i<K.length;i++){var q=K[i];if(T>=q[1])a=q[3];else{if(T>q[0])a=q[2]+(q[3]-q[2])*q[4]((T-q[0])/(q[1]-q[0]));break;}}return a;}
+  function yearOf(a){var y=0;for(var i=1;i<=30;i++){if(a>A[i-1]+1e-6)y=i;}return y;}
+  function tile(a){return Math.min(30,800/(a/20+1));}
+
+  var BASE=930;
+  function drawTower(cx,amt,s,segs,dim){
+    var w=20*s, x0=cx-w/2, g=s*0.12, inner=s-g;
+    for(var j=0;j<segs.length;j++){
+      var sg=segs[j]; if(sg.a>=amt) break;
+      var to=Math.min(sg.b,amt);
+      var col=sg.c==='ink'?mix(C_INK,C_INK_D,dim):sg.c==='gray'?mix(C_GRAY,C_GRAY_D,dim):C_BLUE;
+      ctx.fillStyle=rgb(col);
+      for(var i=Math.floor(sg.a);i<Math.ceil(to);i++){
+        var u0=Math.max(sg.a,i), u1=Math.min(to,i+1); if(u1<=u0) continue;
+        var row=Math.floor(i/20), c=i%20;
+        ctx.fillRect(x0+c*s+g/2+(u0-i)*inner, BASE-(row+1)*s+g/2, (u1-u0)*inner, inner);
+      }
+    }
+  }
+
+  // 一行字：从一条看不见的线下面升上来（停靠），离开时向上抽离；读的时候不动
+  function line(T,str,x,y,size,weight,color,tin,tout,align){
+    if(T<tin||T>tout+0.35) return;
+    var pin=tin<0?1:clamp((T-tin)/0.5), pout=clamp((T-tout)/0.35);
+    var off=(1-DOCK(pin))*size*1.0-LEAVE(pout)*size*1.1;
+    ctx.save();ctx.beginPath();ctx.rect(0,y-size*1.02,1920,size*1.3);ctx.clip();
+    ctx.font=weight+' '+size+'px '+FONT;ctx.fillStyle=color;ctx.textAlign=align||'left';ctx.textBaseline='alphabetic';
+    ctx.fillText(str,x,y+off);ctx.restore();
+  }
+  function fmt(n){return String(Math.round(n));}
+
+  function render(ms){
+    var T=Math.max(0,Math.min(DUR,ms))/1000;
+    ctx.fillStyle=BG;ctx.fillRect(0,0,1920,1080);
+    var INK=rgb(C_INK), BLUE=rgb(C_BLUE);
+    var a=amount(T), s=tile(A[30]>a?a:A[30]);
+    var dim=CARRY(clamp((T-16.4)/0.6));
+
+    // 复利塔：12.8–13.5 向右搬运，给对照留位置
+    var cx=1260+220*CARRY(clamp((T-12.8)/0.7));
+    drawTower(cx,a,s,SEG,dim);
+
+    // 对照：只算本金的利息（30 年 = 100 + 30×10 = 400）
+    if(T>=13.3){
+      var sa=T<13.6?100*DOCK(clamp((T-13.3)/0.3)):100+300*DOCK(clamp((T-13.6)/0.9));
+      drawTower(1080,sa,s,SIMPLE,dim);
+    }
+
+    // ---- 左栏 ----
+    // 第 0 段：题目（第 0 帧已在）
+    line(T,'复利',140,400,220,700,INK,-1,2.2);
+    line(T,'利息也会生利息',146,520,84,400,INK,-1,2.25);
+    // 第 1 段：年份与金额
+    var yr=yearOf(a);
+    line(T,'第 '+yr+' 年',146,300,60,400,INK,2.4,12.95);
+    ctx.save();
+    line(T,fmt(a),140,500,180,700,INK,2.48,12.95);
+    ctx.font='700 180px '+FONT; var nw=ctx.measureText(fmt(a)).width; ctx.restore();
+    line(T,'元',140+nw+18,500,64,400,INK,2.48,12.95);
+    line(T,'第 2 年，按 110 元算利息',146,620,48,400,INK,2.6,6.4);
+    line(T,'利息加进本钱，一起再生利息',146,620,48,400,INK,6.8,12.95);
+    // 第 2 段：对照
+    line(T,'同样 100 元',140,330,72,700,INK,13.3,16.0);
+    line(T,'同样每年 10%',140,440,72,700,INK,13.38,16.04);
+    line(T,'放 30 年',140,550,72,700,INK,13.46,16.08);
+    // 第 3 段：结论
+    line(T,'多出来的蓝色',140,330,96,700,BLUE,16.3,99);
+    line(T,'全是利息生的利息',144,450,64,400,INK,16.42,99);
+    line(T,'时间越长，长得越快',144,550,64,400,INK,16.54,99);
+
+    // 图例（第 3 年起，规则讲完后常驻）
+    var lg=[[C_INK,'本金'],[C_GRAY,'本金生的利息'],[C_BLUE,'利息生的利息']];
+    for(var i=0;i<3;i++){
+      var tin=6.8+i*0.06, yy=880+i*58;
+      if(T>=tin){
+        var p=DOCK(clamp((T-tin)/0.5)), sw=30*p;
+        ctx.fillStyle=rgb(i===2?lg[i][0]:mix(lg[i][0],i===0?C_INK_D:C_GRAY_D,dim));
+        ctx.fillRect(146,yy-28+(30-sw)/2,sw,sw);
+      }
+      line(T,lg[i][1],196,yy,36,400,INK,tin,99);
+    }
+
+    // ---- 塔旁标注（第 1、2 年，慢讲）----
+    line(T,'本金 100 元',1600,868,40,400,INK,-1,6.4);
+    line(T,'+10 元，本金生的',1600,778,40,400,INK,1.62,6.4);
+    // 关键时刻：第 2 年那 1 块蓝
+    if(T>=3.75&&T<6.75){
+      var lp=DOCK(clamp((T-3.75)/0.3)), lo=LEAVE(clamp((T-6.4)/0.35));
+      var x=960+15, y1=720, y0=y1-46*lp;
+      ctx.strokeStyle=BLUE;ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(x,y1-4);ctx.lineTo(x,Math.min(y1-4,y0+46*lo));ctx.stroke();
+    }
+    line(T,'这 1 元',960,600,72,700,BLUE,3.9,6.4);
+    line(T,'是去年的利息又生的利息',962,660,40,400,INK,4.0,6.4);
+
+    // 对照标签
+    var topC=BASE-Math.ceil(A[30]/20)*s;
+    line(T,'约 1745 元',cx,topC-28,56,700,INK,13.6,99,'center');
+    line(T,'400 元',1080,BASE-20*s-28,56,700,INK,14.3,99,'center');
+    line(T,'利滚利',cx,BASE+62,40,400,INK,13.7,99,'center');
+    line(T,'只算本金的利息',1080,BASE+62,40,400,INK,14.4,99,'center');
+  }
+
+  // ---- 播放与 seek ----
+  var seeking=false, t0=null;
+  function loop(now){
+    if(seeking) return;
+    if(t0===null) t0=now;
+    var ms=now-t0; if(ms>DUR) ms=DUR;
+    render(ms);
+    if(ms<DUR) requestAnimationFrame(loop);
+  }
+  window.__seek=function(ms){seeking=true;render(ms);};
+  render(0);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
