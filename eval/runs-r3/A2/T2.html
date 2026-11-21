@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>T2 天空为什么是蓝的</title>
+<style>html,body{margin:0;padding:0;background:#000;overflow:hidden}canvas{display:block}</style>
+</head><body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+const W=1920,H=1080,GROUND=860,BEAMY=230,SUN={x:200,y:230,r:62},EYE={x:1604,y:764};
+const SKY_BLUE=[59,118,198],SKY_DARK=[27,36,48];
+const cv=document.getElementById('c'),g=cv.getContext('2d');
+const FONT='"Microsoft YaHei","PingFang SC","Noto Sans CJK SC",sans-serif';
+function hs(i,k){let x=Math.sin(i*127.1+k*311.7+17.3)*43758.5453;return x-Math.floor(x);}
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sm=u=>{u=cl(u,0,1);return u*u*(3-2*u);};
+const eio=u=>{u=cl(u,0,1);return u<.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2;};
+const mix=(a,b,u)=>a.map((v,i)=>Math.round(v+(b[i]-v)*u));
+const rgb=c=>`rgb(${c[0]},${c[1]},${c[2]})`;
+
+// --- S2 scatter events: 42 blue + 7 red (ratio ~6:1, schematic) ---
+const EV=[];{const N=49;for(let i=0;i<N;i++){const red=(i%7===3);
+  const t0=3.8+4.4*(i/(N-1))+ (hs(i,1)-.5)*0.05;
+  EV.push({t:t0,x:340+hs(i,2)*1160,red,dur:0.62+hs(i,3)*0.12});}}
+// --- S3 sky dots: 260, cumulative appearance = smoothstep (rate rises then falls to zero) ---
+const ND=260,DOTS=[];
+for(let i=0;i<ND;i++){const p=(i+0.5)/ND;
+  // invert smoothstep: find u with sm(u)=p (bisection)
+  let lo=0,hi=1;for(let k=0;k<30;k++){const m=(lo+hi)/2;if(sm(m)<p)lo=m;else hi=m;}
+  let x=hs(i,4)*W,y=24+hs(i,5)*(GROUND-50);
+  DOTS.push({t:9.0+3.6*lo,x,y});}
+const S3_END=12.6;
+
+function caption(txt,t,a,b){ // visible from a to b with 0.15s fades
+  let o=Math.min(sm((t-a)/0.15),1-sm((t-(b-0.15))/0.15));if(t<a||t>b)o=0;
+  if(o<=0)return;g.globalAlpha=o;g.fillStyle='#ffffff';g.font=`700 84px ${FONT}`;
+  g.textAlign='center';g.textBaseline='middle';g.fillText(txt,W/2,970);g.globalAlpha=1;}
+
+function render(t){
+  t=cl(t,0,15);
+  // sky colour
+  let sky;
+  if(t<3.2)sky=SKY_BLUE;
+  else if(t<9.0)sky=mix(SKY_BLUE,SKY_DARK,sm((t-3.2)/0.4));
+  else{const f=sm((t-9.0)/3.6);sky=mix(SKY_DARK,SKY_BLUE,f);}
+  g.fillStyle=rgb(sky);g.fillRect(0,0,W,GROUND);
+  // S3 dots (persist)
+  if(t>=9.0){for(const d of DOTS){if(t<d.t)continue;const age=t-d.t;
+      // streak toward eye fading in 0.4s
+      if(age<0.4){const dx=EYE.x-d.x,dy=EYE.y-d.y,L=Math.hypot(dx,dy),k=Math.min(70,L)/L;
+        g.strokeStyle=`rgba(170,210,255,${(1-age/0.4)*0.9})`;g.lineWidth=3;g.beginPath();
+        g.moveTo(d.x,d.y);g.lineTo(d.x+dx*k,d.y+dy*k);g.stroke();}
+      g.fillStyle='rgba(150,200,255,0.85)';g.beginPath();g.arc(d.x,d.y,4.5,0,7);g.fill();}}
+  // beam (always white: the sun's own direction stays white)
+  const bg=g.createLinearGradient(0,BEAMY-14,0,BEAMY+14);
+  bg.addColorStop(0,'rgba(255,251,232,0)');bg.addColorStop(.5,'rgba(255,251,232,0.85)');bg.addColorStop(1,'rgba(255,251,232,0)');
+  g.fillStyle=bg;g.fillRect(SUN.x,BEAMY-14,W-SUN.x,28);
+  // sun (the only light source)
+  const sg=g.createRadialGradient(SUN.x,SUN.y,SUN.r*.6,SUN.x,SUN.y,SUN.r*1.9);
+  sg.addColorStop(0,'rgba(255,246,210,0.55)');sg.addColorStop(1,'rgba(255,246,210,0)');
+  g.fillStyle=sg;g.beginPath();g.arc(SUN.x,SUN.y,SUN.r*1.9,0,7);g.fill();
+  g.fillStyle='#fff4cf';g.beginPath();g.arc(SUN.x,SUN.y,SUN.r,0,7);g.fill();
+  // photon stream on the beam (S2 only): r,g,b cycle, spawn 3.4..8.0
+  if(t>3.4){for(let k=0;;k++){const s=3.4+k*0.07;if(s>8.0||s>t)break;const x=SUN.x+SUN.r+(t-s)*700;if(x>W+10)continue;
+      const c=['#ff6a5a','#7be08a','#6aa8ff'][k%3];g.fillStyle=c;g.beginPath();g.arc(x,BEAMY,5,0,7);g.fill();}}
+  // scatter events
+  let nb=0,nr=0;
+  for(const e of EV){if(t<e.t)continue;const age=t-e.t,col=e.red?'#ff6a5a':'#6aa8ff';
+    if(age<0.3){g.strokeStyle=col;g.globalAlpha=1-age/0.3;g.lineWidth=3;g.beginPath();g.arc(e.x,BEAMY,8+age/0.3*24,0,7);g.stroke();g.globalAlpha=1;}
+    const u=age/e.dur;
+    if(u<1){const p=eio(u),x=e.x+(EYE.x-e.x)*p,y=BEAMY+(EYE.y-BEAMY)*p;
+      g.strokeStyle=col;g.globalAlpha=.35;g.lineWidth=2;g.beginPath();g.moveTo(e.x,BEAMY);g.lineTo(x,y);g.stroke();g.globalAlpha=1;
+      g.fillStyle=col;g.beginPath();g.arc(x,y,13,0,7);g.fill();}
+    else{if(e.red)nr++;else nb++;}}
+  // ground
+  g.fillStyle='#15181c';g.fillRect(0,GROUND,W,H-GROUND);
+  // observer
+  g.strokeStyle='#d6dbe2';g.fillStyle='#d6dbe2';g.lineWidth=10;g.lineCap='round';
+  g.beginPath();g.arc(1590,770,22,0,7);g.fill();
+  g.beginPath();g.moveTo(1590,796);g.lineTo(1590,836);g.moveTo(1590,836);g.lineTo(1574,858);g.moveTo(1590,836);g.lineTo(1606,858);
+  g.moveTo(1590,806);g.lineTo(1570,830);g.moveTo(1590,806);g.lineTo(1610,830);g.stroke();
+  g.fillStyle='#15181c';g.beginPath();g.arc(EYE.x,EYE.y,4,0,7);g.fill();
+  // tally (S2, fades out 9.0-9.3)
+  const ta=Math.min(sm((t-3.5)/0.2),1-sm((t-9.0)/0.3));
+  if(ta>0){g.globalAlpha=ta;g.font=`700 52px ${FONT}`;g.textAlign='left';g.textBaseline='middle';
+    g.fillStyle='#ffffff';g.fillText('被弹开',1180,72);
+    const rows=[['蓝',nb,'#6aa8ff',72],['红',nr,'#ff6a5a',140]];
+    for(const [n,v,c,y] of rows){g.fillStyle=c;g.fillText(n+' '+v,1380,y);g.fillRect(1530,y-14,v*6,28);}
+    g.globalAlpha=1;}
+  // schematic tag
+  if(t>=3.2){g.globalAlpha=sm((t-3.2)/0.2);g.font=`400 44px ${FONT}`;g.textAlign='left';g.textBaseline='middle';
+    g.fillStyle='rgba(255,255,255,0.9)';g.fillText('示意',128,72);g.globalAlpha=1;}
+  // S1 question
+  if(t<3.4){const o=1-sm((t-3.2)/0.2);g.globalAlpha=o;g.font=`700 120px ${FONT}`;g.textAlign='center';g.textBaseline='middle';
+    g.fillStyle='#ffffff';g.fillText('天空为什么是蓝的？',W/2,500);g.globalAlpha=1;}
+  caption('空气把蓝光弹开的次数，约是红光的 6 倍',t,3.4,9.1);
+  caption('弹开的蓝光从四面八方进眼睛，天就蓝了',t,9.0,15.01);
+}
+let paused=false,t0=null;
+window.__seek=function(ms){paused=true;render(ms/1000);};
+function loop(now){if(paused)return;if(t0===null)t0=now;render(((now-t0)/1000)%15);requestAnimationFrame(loop);}
+render(0);requestAnimationFrame(loop);
+</script></body></html>

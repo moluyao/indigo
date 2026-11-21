@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>社区图书馆 · 周末</title>
+<style>
+  html,body{margin:0;padding:0;background:#24392f;}
+  #poster{width:1080px;height:1350px;display:block;}
+  text{font-family:"Microsoft YaHei","PingFang SC","Source Han Sans SC","Noto Sans CJK SC",sans-serif;}
+</style>
+</head>
+<body>
+<svg id="poster" viewBox="0 0 1080 1350" xmlns="http://www.w3.org/2000/svg">
+  <!-- 书的内封：精装书布（墨绿） -->
+  <rect width="1080" height="1350" fill="#24392f"/>
+  <!-- 书布的经纬：只是两道装订压痕，不铺纹理 -->
+  <rect x="0" y="0" width="34" height="1350" fill="#1d2f27"/>
+  <rect x="34" y="0" width="4" height="1350" fill="#2d463a"/>
+
+  <!-- 借书卡（插在书袋里，微斜） -->
+  <g transform="rotate(-2.2 540 700)">
+    <rect x="150" y="70" width="780" height="1050" fill="#efe3b4"/>
+    <!-- 卡头 -->
+    <text x="200" y="138" font-size="30" font-weight="700" fill="#1f2a44" letter-spacing="4">社区图书馆　借书卡</text>
+    <line x1="200" y1="164" x2="880" y2="164" stroke="#1f2a44" stroke-width="4"/>
+    <!-- 主标题 -->
+    <text x="196" y="316" font-size="128" font-weight="900" fill="#141a2b">这个周末，</text>
+    <text x="196" y="464" font-size="128" font-weight="900" fill="#141a2b">借你两天。</text>
+
+    <!-- 表格：到期日 / 活动 / 时间 -->
+    <g stroke="#1f2a44" fill="none">
+      <rect x="200" y="530" width="680" height="300" stroke-width="4"/>
+      <line x1="200" y1="590" x2="880" y2="590" stroke-width="3"/>
+      <line x1="200" y1="710" x2="880" y2="710" stroke-width="2"/>
+      <line x1="370" y1="530" x2="370" y2="830" stroke-width="2"/>
+      <line x1="700" y1="530" x2="700" y2="830" stroke-width="2"/>
+    </g>
+    <text x="285" y="572" font-size="28" font-weight="700" fill="#1f2a44" text-anchor="middle">到期日</text>
+    <text x="535" y="572" font-size="28" font-weight="700" fill="#1f2a44" text-anchor="middle">活动</text>
+    <text x="790" y="572" font-size="28" font-weight="700" fill="#1f2a44" text-anchor="middle">时间</text>
+    <text x="285" y="666" font-size="44" font-weight="700" fill="#1f2a44" text-anchor="middle">周六</text>
+    <text x="285" y="786" font-size="44" font-weight="700" fill="#1f2a44" text-anchor="middle">周日</text>
+    <!-- 手填栏：只给书写基线，馆员用笔填 -->
+    <g stroke="#1f2a44" stroke-width="1.5" stroke-dasharray="6 8" opacity="0.55">
+      <line x1="392" y1="680" x2="680" y2="680"/>
+      <line x1="722" y1="680" x2="860" y2="680"/>
+      <line x1="392" y1="800" x2="680" y2="800"/>
+      <line x1="722" y1="800" x2="860" y2="800"/>
+    </g>
+
+    <!-- 红色印泥章：唯一的强调，只出现一次，压在到期日格上 -->
+    <g transform="rotate(-11 300 720)" style="mix-blend-mode:multiply" opacity="0.9">
+      <rect x="196" y="640" width="250" height="150" rx="10" fill="none" stroke="#c4162a" stroke-width="9"/>
+      <rect x="212" y="656" width="218" height="118" rx="5" fill="none" stroke="#c4162a" stroke-width="3"/>
+      <text x="321" y="752" font-size="88" font-weight="900" fill="#c4162a" text-anchor="middle" letter-spacing="10">周末</text>
+    </g>
+  </g>
+
+  <!-- 书袋（牛皮纸，压住卡片下半截） -->
+  <path d="M110 900 L970 900 L970 1350 L110 1350 Z" fill="#b98d55"/>
+  <path d="M110 900 L970 900 L970 918 L110 918 Z" fill="#a67b45"/>
+  <!-- 书袋的拇指缺口 -->
+  <path d="M470 900 Q540 975 610 900 Z" fill="#24392f"/>
+  <text x="160" y="1080" font-size="76" font-weight="900" fill="#2a1f12">社区图书馆</text>
+  <text x="162" y="1150" font-size="36" font-weight="400" fill="#2a1f12">周末来坐坐，书和座位都在。</text>
+  <line x1="160" y1="1200" x2="920" y2="1200" stroke="#2a1f12" stroke-width="3"/>
+  <text x="162" y="1252" font-size="28" font-weight="400" fill="#3b2c19">活动与时间以卡上手写为准</text>
+</svg>
+</body>
+</html>

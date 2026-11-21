@@ -1,6 +1,6 @@
 # 青出 · Indigo
 
-> **English summary.** *Indigo* (from the proverb "indigo comes from the indigo plant, yet is bluer than it") is a framework for absorbing other people's AI design and video skills **without inheriting their style**, plus a quality standard to judge the results. Instead of installing someone's skill, it runs isolated steps — **learn** (extract principles), **forget** (strip names, numbers and recipes), **rewrite** (an agent that never saw the sources re-derives everything from first principles), **check** (an independent agent verifies the rewrite doesn't reproduce the sources). On the creative side it enforces *diverge first, then converge*, a ban list of "AI-default looks", and blind review. In blind tests, outputs made with the framework ranked first in all 6 rankings of round 1 (5 groups, 3 models), and won 5 of 6 rankings in round 2 (Opus 5.5 only, with vs. without, 3 runs each). Docs are in Chinese.
+> **English summary.** *Indigo* (from the proverb "indigo comes from the indigo plant, yet is bluer than it") is a framework for absorbing other people's AI design and video skills **without inheriting their style**, plus a quality standard to judge the results. Instead of installing someone's skill, it runs isolated steps — **learn** (extract principles), **forget** (strip names, numbers and recipes), **rewrite** (an agent that never saw the sources re-derives everything from first principles), **check** (an independent agent verifies the rewrite doesn't reproduce the sources). On the creative side it enforces *diverge first, then converge*, a ban list of "AI-default looks", and blind review. In blind tests, outputs made with the framework ranked first in all 6 rankings of round 1 (5 groups, 3 models), won 5 of 6 rankings in round 2 (Opus 5.5 only, with vs. without, 3 runs each), and in round 3 the v2.1 core produced every work both reviewers rated commercial-grade (7/8 and 5/8, vs 0 for no framework and 0 for v1). Docs are in Chinese.
 
 青出取"青出于蓝而胜于蓝"：向别人学，最后超过它。
 
@@ -10,8 +10,9 @@
 |---|---|---|
 | 第 1 轮（3 个模型 × 3 题，2 位盲评） | 6 份排名的第 1 名全部是 | 不同模型撞出三对几乎一样的作品 |
 | 第 2 轮（Opus 5.5，各 3 次 × 3 题，2 位盲评） | 5/6 份排名领先，唯一的 L3 | 落在"奶油底 + 橙红日轮"这类默认模板 |
+| 第 3 轮（Opus 5.5，v2.1 / 不用 / v1 三组，2 位盲评） | 交付时达到商业合格（L2）：v2.1 组 7/8、5/8 | 不用框架 0/9，v1 也是 0/7 |
 
-目录：[为什么要有它](#为什么要有它) · [它是怎么工作的](#它是怎么工作的) · [怎么用](#怎么用) · [测试结果](#测试结果) · [目录结构](#目录结构) · [当前状态](#当前状态v01) · [来源与许可](#来源与许可)
+目录：[为什么要有它](#为什么要有它) · [它是怎么工作的](#它是怎么工作的) · [怎么用](#怎么用) · [测试结果](#测试结果) · [目录结构](#目录结构) · [当前状态](#当前状态v02) · [来源与许可](#来源与许可)
 
 ## 为什么要有它
 
@@ -43,7 +44,9 @@
 
 ## 怎么用
 
-**任何模型（最简单）**：把 [`core/indigo-core-v1.md`](core/indigo-core-v1.md) 作为系统提示，再提你的需求。模型会先写出理解、排除的默认方向、几个候选方向和选择理由，再交付作品。
+> **已知问题**：在第 3 轮测试里，带着精简版长时间工作（反复渲染、看图）的任务，有时会被 Anthropic 按使用政策拒绝；只读不会。原因还在排查，见 [`TODO`](#当前状态v02)。遇到时可以把任务拆短，每题单独开一次。旧版 [`core/indigo-core-v1.md`](core/indigo-core-v1.md) 仍保留。
+
+**任何模型（最简单）**：把 [`core/indigo-core-v2.md`](core/indigo-core-v2.md)（v2.1，推荐）作为系统提示，再提你的需求。模型会先写出理解、排除的默认方向、几个候选方向和选择理由，再交付作品。
 
 **Claude Code 等支持 skill 的工具**：把整个仓库放进 skills 目录（例如 `~/.claude/skills/indigo/`），说"用青出做……"或"用青出评审这条片子"。入口见 [`SKILL.md`](SKILL.md)。
 
@@ -52,6 +55,45 @@
 ## 测试结果
 
 评分：L0 坏 / L1 能用 / L2 商业合格 / L3 精品 / L4 惊艳。评审都是盲评，不知道作品出自哪一组。
+
+### 第 3 轮（2026-11-21）：v2.1 / 不用框架 / v1，只用 Opus 5.5
+
+同一个模型分三组：A 组用精简版 v2.1，B 组不用框架，C 组用旧的 v1；三组都允许自己渲染检查。三道新题：「给社区图书馆做一张周末活动的宣传图」「做一个 15 秒的动画，讲清楚为什么天空是蓝色的」「给一款新耳机做一个 6 秒的竖屏宣传动画」。两位独立评审按新的评审表 `eval/rubric-v2.md` 盲评，每件作品单独打创意分和执行分。
+
+| 组 | 交付时达到 L2（评审 a / b） | 创意（a / b） |
+|---|---|---|
+| **A：青出 v2.1** | **7/8 · 5/8** | **3.25 · 3.12** |
+| B：不用框架 | 0/9 · 0/9 | 1.89 · 2.22 |
+| C：青出 v1 | 0/7 · 0/7 | 3.00 · 3.00 |
+
+- 两位评审给出的全部 L2 都来自 v2.1 组；其余作品全是 L0，原因都是可以修的执行失误（文字停留不够、字太小、空白填写栏、开头静止）。
+- v2.1 的两个目标都达到：创意不低于 v1，交付时的执行明显高于 v1（v1 的三张海报又全部留了空白填写栏，v2.1 一张都没有）。
+- 不用框架的一组撞车最集中：三张海报都是奶油底加橙红强调，三条耳机动画都是"暗底暖光晕加参数三连"，还编了没标注的产品参数。
+- v2.1 组也有第二层撞车（两张海报都把"请保持安静"门牌改成"大声"），已列为登记表候选。
+- 成本：v2.1 比不用框架多约 40% token，比 v1 多约 7%。
+- 样本不齐：带框架的制作任务多次被拒（见上方已知问题），被拒的不重试。详见 [`eval/round3-results.md`](eval/round3-results.md)。
+
+#### 第 3 轮作品
+
+**图书馆活动宣传图**
+
+| A1 | A2 | A3 | B1 | B2 | B3 | C1 | C2 | C3 |
+|---|---|---|---|---|---|---|---|---|
+| <img src="eval/preview-r3/T1_A1.png" width="110"> | <img src="eval/preview-r3/T1_A2.png" width="110"> | <img src="eval/preview-r3/T1_A3.png" width="110"> | <img src="eval/preview-r3/T1_B1.png" width="110"> | <img src="eval/preview-r3/T1_B2.png" width="110"> | <img src="eval/preview-r3/T1_B3.png" width="110"> | <img src="eval/preview-r3/T1_C1.png" width="110"> | <img src="eval/preview-r3/T1_C2.png" width="110"> | <img src="eval/preview-r3/T1_C3.png" width="110"> |
+
+**天空为什么是蓝的**
+
+| A1 | A2 | A3 | B1 | B2 | B3 | C1 | C2 |
+|---|---|---|---|---|---|---|---|
+| <img src="eval/preview-r3/T2_A1.gif" width="150"> | <img src="eval/preview-r3/T2_A2.gif" width="150"> | <img src="eval/preview-r3/T2_A3.gif" width="150"> | <img src="eval/preview-r3/T2_B1.gif" width="150"> | <img src="eval/preview-r3/T2_B2.gif" width="150"> | <img src="eval/preview-r3/T2_B3.gif" width="150"> | <img src="eval/preview-r3/T2_C1.gif" width="150"> | <img src="eval/preview-r3/T2_C2.gif" width="150"> |
+
+**耳机竖屏宣传**
+
+| A1 | A2 | B1 | B2 | B3 | C1 | C2 |
+|---|---|---|---|---|---|---|
+| <img src="eval/preview-r3/T3_A1.gif" width="90"> | <img src="eval/preview-r3/T3_A2.gif" width="90"> | <img src="eval/preview-r3/T3_B1.gif" width="90"> | <img src="eval/preview-r3/T3_B2.gif" width="90"> | <img src="eval/preview-r3/T3_B3.gif" width="90"> | <img src="eval/preview-r3/T3_C1.gif" width="90"> | <img src="eval/preview-r3/T3_C2.gif" width="90"> |
+
+A = 青出 v2.1，B = 不用框架，C = 青出 v1。
 
 ### 第 2 轮（2026-11-19）：只用 Opus 5.5，用 vs 不用，各 3 次
 
@@ -143,17 +185,19 @@
 
 | 路径 | 内容 |
 |---|---|
-| `core/` | 精简版系统提示（约 1.7 万字），给任何模型直接用 |
-| `books/` | 六本书：动效节奏、视觉设计、镜头与叙事、声音、需求理解、风格词汇库 |
-| `standards/` | 质量标准（目前只有动效）和底线检查脚本 |
-| `framework/` | 宪章、执行规范、各步骤指令、变更记录、发布规则 |
-| `eval/` | 测试题、评分表、各组作品与过程、两份盲评原文、渲染与调用脚本 |
+| `core/` | 精简版系统提示：v2.1（推荐，约 2.25 万字）和 v1 |
+| `books/` | 六本书（r5）：动效节奏、视觉设计、镜头与叙事、声音、需求理解、风格词汇库 |
+| `standards/` | 五份质量标准（视觉设计、镜头与叙事、声音、需求理解、动效 v2）、共用条目对照表、第二层默认登记表、检查脚本 |
+| `framework/` | 宪章、执行规范（含流程纪律）、各步骤指令、变更记录、发布规则 |
+| `reference/` | 外部规范原文摘录（WCAG 2.3.1 闪烁阈值） |
+| `eval/` | 三轮测试题、评分表、各组作品与过程、盲评原文、结果分析、渲染与调用脚本 |
 
-## 当前状态：v0.1
+## 当前状态：v0.2
 
-- 六本书都通过了"不复现原料"的检验，但检验同时发现骨架里漏进了部分来源的成套结构，书的一些章节离来源仍然偏近，正在按重写清单修订。
-- 质量标准目前只覆盖动效；视觉设计、镜头与叙事、声音、需求理解的标准还没写。
-- 书里标「待实验验证」「弱证据」的条目，都还没有实验数据支持。
+- 六本书按两轮检验修到 r5，重新检验六本均无退回章节、无重度复现，并通过了防偏移检查。
+- 五份质量标准写完，共用条目（字高、边距、读速、闪烁等）用脚本对齐成一套数值；其中一批阈值标「待实验」，第 3 轮数据显示文字停留公式偏严，待校准。
+- 精简版 v2.1 经过独立覆盖审计。**已知问题**：带着它长时间工作的任务有时会被使用政策拒绝，原因排查中。
+- 书里标「待实验验证」「弱证据」的条目，大多还没有实验数据支持。
 
 ## 来源与许可
 

@@ -202,7 +202,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("run_dir")
     ap.add_argument("--only", nargs="*", choices=list(SPEC))
+    ap.add_argument("--set", default="r1", choices=["r1", "r2", "r3"], help="task spec set: r1 (round 1) or r2 (round 2)")
     a = ap.parse_args()
+    if a.set == "r2":
+        SPEC.update({"T1": {"w": 1080, "h": 1350}, "T2": {"w": 1920, "h": 1080, "dur": 20000}, "T3": {"w": 1920, "h": 1080, "dur": 8000}})
+    if a.set == "r3":
+        SPEC.update({"T1": {"w": 1080, "h": 1350}, "T2": {"w": 1920, "h": 1080, "dur": 15000}, "T3": {"w": 1080, "h": 1920, "dur": 6000}})
     ensure_playwright()
     from playwright.sync_api import sync_playwright
 

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>城南社区图书馆 · 周末活动</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1350px; overflow: hidden; background: #EDE4D3; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    color: #1E3A2F;
+  }
+  .poster {
+    position: relative; width: 1080px; height: 1350px; overflow: hidden;
+    background:
+      radial-gradient(1200px 800px at 85% 10%, rgba(255,250,240,.75), rgba(255,250,240,0) 60%),
+      linear-gradient(180deg, #F1E9DA 0%, #EADFCB 100%);
+  }
+  /* faint ruled lines like a library ledger */
+  .poster::before {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(180deg, rgba(30,58,47,0) 0 47px, rgba(30,58,47,.045) 47px 48px);
+    pointer-events: none;
+  }
+
+  .top {
+    position: absolute; left: 80px; right: 80px; top: 64px;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    padding-bottom: 18px; border-bottom: 3px solid #1E3A2F;
+  }
+  .top .lib { font-size: 30px; font-weight: 700; letter-spacing: 4px; }
+  .top .lib small { display: block; font-size: 14px; font-weight: 600; letter-spacing: 3.2px; margin-top: 6px; opacity: .6; font-family: "Segoe UI", Arial, sans-serif; }
+  .top .issue { text-align: right; font-size: 20px; font-weight: 600; letter-spacing: 2px; }
+  .top .issue b { display: block; font-size: 15px; letter-spacing: 3px; opacity: .6; font-family: "Segoe UI", Arial, sans-serif; margin-bottom: 6px; }
+
+  .headline {
+    position: absolute; left: 74px; top: 170px;
+    font-size: 148px; line-height: 1.08; font-weight: 900; letter-spacing: -2px;
+  }
+  .headline .accent { color: #D9502F; }
+  .sub {
+    position: absolute; left: 82px; top: 520px;
+    font-size: 32px; font-weight: 500; letter-spacing: 1px; color: #3C564B;
+  }
+  .sub b { color: #1E3A2F; font-weight: 800; }
+
+  /* ---------- shelf of event books ---------- */
+  .shelf-line {
+    position: absolute; left: 60px; right: 60px; top: 1142px; height: 16px;
+    background: #1E3A2F; border-radius: 2px;
+    box-shadow: 0 10px 0 -4px rgba(30,58,47,.18);
+  }
+  .book {
+    position: absolute; bottom: calc(1350px - 1142px);
+    border-radius: 6px 6px 2px 2px;
+    box-shadow: inset -10px 0 0 rgba(0,0,0,.10), inset 4px 0 0 rgba(255,255,255,.14);
+    overflow: hidden;
+  }
+  .book::before, .book::after {
+    content: ""; position: absolute; left: 0; right: 0; height: 5px; background: rgba(255,255,255,.35);
+  }
+  .book::before { top: 34px; box-shadow: 0 12px 0 rgba(255,255,255,.35); }
+  .book::after { bottom: 30px; }
+  .book .title {
+    position: absolute; top: 82px; left: 50%; transform: translateX(-50%);
+    writing-mode: vertical-rl; text-orientation: upright;
+    font-size: 58px; font-weight: 900; letter-spacing: 4px; color: #FFF8EC;
+  }
+  .book .note {
+    position: absolute; top: 88px; right: 16px;
+    writing-mode: vertical-rl; font-size: 20px; font-weight: 600; letter-spacing: 3px;
+    color: rgba(255,248,236,.78);
+  }
+  .book .time {
+    position: absolute; left: 14px; right: 14px; bottom: 50px;
+    background: #FFF8EC; color: #1E3A2F; border-radius: 4px;
+    text-align: center; padding: 10px 0 9px;
+    font-size: 21px; font-weight: 800; line-height: 1.25; letter-spacing: 1px;
+  }
+  .book .time span { display: block; font-size: 30px; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; letter-spacing: 0; }
+
+  .b1 { left: 96px;  width: 178px; height: 520px; background: #D9502F; }
+  .b2 { left: 288px; width: 178px; height: 500px; background: #2F6B57; }
+  .b3 { left: 480px; width: 178px; height: 560px; background: #E2A13A; }
+  .b3 .title, .b3 .note { color: #2A2216; }
+  .b3 .note { color: rgba(42,34,22,.7); }
+  .b3::before, .b3::after { background: rgba(42,34,22,.22); }
+  .b3::before { box-shadow: 0 12px 0 rgba(42,34,22,.22); }
+  /* thin decorative books */
+  .d1 { left: 672px; width: 46px; height: 400px; background: #1E3A2F; }
+  .d2 { left: 724px; width: 34px; height: 360px; background: #8BAA9B; transform-origin: bottom right; transform: rotate(9deg); left: 740px; }
+  .d1::before, .d1::after, .d2::before, .d2::after { height: 3px; }
+
+  /* ---------- due-date card ---------- */
+  .card {
+    position: absolute; left: 790px; top: 640px; width: 230px; height: 470px;
+    background: #FBF6EC; border: 2px solid #C9BBA2; border-radius: 4px;
+    transform: rotate(4deg); transform-origin: bottom left;
+    box-shadow: 0 18px 30px -12px rgba(30,58,47,.35);
+    padding: 22px 18px;
+  }
+  .card .pocket-h { font-size: 15px; letter-spacing: 3px; font-weight: 800; text-align: center; color: #1E3A2F; }
+  .card .pocket-h small { display: block; font-size: 11px; letter-spacing: 2.4px; opacity: .55; margin-top: 4px; font-family: "Segoe UI", Arial, sans-serif; }
+  .card table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+  .card td { border-top: 1px solid #D8CBB3; height: 50px; font-family: "KaiTi", "STKaiti", "Kaiti SC", serif; font-size: 22px; color: #3B4F7A; }
+  .card td:first-child { width: 42%; border-right: 1px solid #D8CBB3; padding-left: 4px; font-size: 18px; color: #6B6253; font-family: "Microsoft YaHei", sans-serif; }
+  .card td.empty { color: transparent; }
+  .stamp {
+    position: absolute; left: 30px; top: 262px; width: 176px; height: 176px;
+    border: 5px solid rgba(217,80,47,.88); border-radius: 50%;
+    transform: rotate(-16deg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: rgba(217,80,47,.9); font-weight: 900;
+    box-shadow: inset 0 0 0 6px #FBF6EC, inset 0 0 0 8px rgba(217,80,47,.85);
+    mix-blend-mode: multiply;
+  }
+  .stamp .s1 { font-size: 20px; letter-spacing: 3px; }
+  .stamp .s2 { font-size: 46px; line-height: 1.05; letter-spacing: 1px; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; }
+  .stamp .s3 { font-size: 18px; letter-spacing: 2px; }
+
+  /* ---------- footer ---------- */
+  .foot {
+    position: absolute; left: 80px; right: 80px; top: 1196px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .foot .where { font-size: 25px; line-height: 1.6; font-weight: 600; }
+  .foot .where em { font-style: normal; opacity: .55; font-weight: 500; margin-right: 10px; }
+  .foot .free {
+    background: #1E3A2F; color: #F1E9DA; border-radius: 999px;
+    padding: 18px 34px; font-size: 30px; font-weight: 800; letter-spacing: 3px; margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="poster">
+  <div class="top">
+    <div class="lib">城南社区图书馆<small>CHENGNAN COMMUNITY LIBRARY</small></div>
+    <div class="issue"><b>WEEKEND · 11.22—11.23</b>周末开放日</div>
+  </div>
+
+  <div class="headline">这个周末，<br>图书馆<span class="accent">见。</span></div>
+  <div class="sub">三场活动，<b>一老一小</b>都有地方坐下来。</div>
+
+  <!-- event books -->
+  <div class="book b1">
+    <div class="title">绘本共读</div>
+    <div class="note">3—8岁 · 家长陪同</div>
+    <div class="time">周六<span>10:00</span></div>
+  </div>
+  <div class="book b2">
+    <div class="title">旧书交换</div>
+    <div class="note">带一本 · 换一本</div>
+    <div class="time">周六<span>14:30</span></div>
+  </div>
+  <div class="book b3">
+    <div class="title">慢读会</div>
+    <div class="note">本期：《活着》</div>
+    <div class="time">周日<span>15:00</span></div>
+  </div>
+  <div class="book d1"></div>
+  <div class="book d2"></div>
+
+  <div class="card">
+    <div class="pocket-h">借 阅 期 限<small>DATE DUE</small></div>
+    <table>
+      <tr><td>11·22 六</td><td>绘本</td></tr>
+      <tr><td>11·22 六</td><td>换书</td></tr>
+      <tr><td>11·23 日</td><td>读书</td></tr>
+      <tr><td>&nbsp;</td><td class="empty">-</td></tr>
+      <tr><td>&nbsp;</td><td class="empty">-</td></tr>
+      <tr><td>&nbsp;</td><td class="empty">-</td></tr>
+    </table>
+    <div class="stamp">
+      <div class="s1">免费入场</div>
+      <div class="s2">FREE</div>
+      <div class="s3">无需报名</div>
+    </div>
+  </div>
+
+  <div class="shelf-line"></div>
+
+  <div class="foot">
+    <div class="where"><em>地点</em>城南街道文化中心 2 楼阅览室<br><em>时间</em>11月22日（六）— 23日（日）</div>
+    <div class="free">免费 · 直接来</div>
+  </div>
+</div>
+</body>
+</html>

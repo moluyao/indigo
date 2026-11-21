@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>新耳机</title>
+<style>
+  html,body{margin:0;padding:0;background:#000;}
+  body{width:1080px;height:1920px;overflow:hidden;}
+  canvas{display:block;}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+(function(){
+const cv=document.getElementById('c'), g=cv.getContext('2d');
+const W=1080,H=1920,DUR=6000;
+const FONT='"Microsoft YaHei","PingFang SC","Noto Sans CJK SC",sans-serif';
+const GRAY='#D7D6D1', RED='#E2402B', INK='#141414';
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const seg=(t,a,b)=>clamp((t-a)/(b-a),0,1);
+const dock=x=>1-Math.pow(1-x,2.6);
+const sinkE=x=>x*x*(3-2*x)*x+ (1-x)*0; // 沉入：前段慢、被推着加速落定
+const sink=x=>Math.pow(x,2.2);
+const away=x=>x*x*x;
+let s=8086;const rnd=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};
+
+const WORDS=['喇叭','电钻','报站','嘀嘀嘀','施工','哐','下一站','请让一让','装修','狗叫','嗡——','外卖到了','刹车','咚咚咚','叮咚','开会了','哗啦','鸣笛','广播','排队请往后','叮','砰','轰隆','说话声','嘟——','嘈杂','咣当','吆喝','咔嚓','嘀'];
+const NW=[];
+for(let i=0;i<WORDS.length;i++){
+  let x,y,tries=0;
+  do{ x=150+rnd()*780; y=360+rnd()*1240; tries++; }
+  while(((y>820&&y<1140)) && tries<50);
+  NW.push({w:WORDS[i],x,y,size:Math.round(34+rnd()*34),rot:(rnd()-.5)*0.25,ph:rnd()*6.28,c:rnd()});
+}
+NW.forEach(n=>{ // 离耳罩（左右边）越近越早掉
+  const d=Math.min(n.x,W-n.x);
+  n.td=2.02+d/2600+n.c*0.05;
+});
+
+function txt(str,x,y,size,col,alpha,weight){
+  g.save();g.globalAlpha=alpha;g.fillStyle=col;g.font=(weight||400)+' '+size+'px '+FONT;
+  g.textAlign='center';g.textBaseline='middle';g.fillText(str,x,y);g.restore();
+}
+function rr(x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
+
+function headphones(t){
+  // 落下：0–1.45 悬停微降，1.45–2.0 沉入扣合
+  const hover=-300+30*seg(t,0,1.45);
+  const k=sink(seg(t,1.45,2.0));
+  const dy=hover*(1-k);
+  const open=110*(1-k);               // 耳罩张开量
+  // 扣合时的唯一一次压缩
+  const q=seg(t,2.0,2.28), squash=1-0.07*Math.sin(Math.PI*q)*(1-q*0.3);
+  const CY=1000+dy, CH=540, CW=300;
+  const lx=-open, rx=W+open;
+  g.save();
+  // 头梁
+  g.lineCap='round';
+  g.strokeStyle=INK;g.lineWidth=70;
+  g.beginPath();g.moveTo(lx+40,CY-CH/2-60);g.bezierCurveTo(lx+40,CY-860,rx-40,CY-860,rx-40,CY-CH/2-60);g.stroke();
+  g.strokeStyle='#2B2B2B';g.lineWidth=8;
+  g.beginPath();g.moveTo(lx+40,CY-CH/2-60);g.bezierCurveTo(lx+40,CY-850,rx-40,CY-850,rx-40,CY-CH/2-60);g.stroke();
+  // 连接臂
+  g.fillStyle=INK;
+  rr(lx+22,CY-CH/2-90,36,120,14);g.fill();
+  rr(rx-58,CY-CH/2-90,36,120,14);g.fill();
+  // 耳罩（左右各一，一半在屏幕外）
+  [[lx,1],[rx,-1]].forEach(([cx,dir])=>{
+    g.save();g.translate(cx,CY);g.scale(1,squash);
+    g.fillStyle=INK;rr(-CW/2,-CH/2,CW,CH,CW/2);g.fill();
+    // 耳垫（朝屏幕内的一侧）
+    g.fillStyle='#2E2E2E';rr(dir>0?CW/2-46:-CW/2,-CH/2+40,46,CH-80,23);g.fill();
+    // 外壳上一条细分型线
+    g.strokeStyle='#333';g.lineWidth=4;rr(-CW/2+34,-CH/2+34,CW-68,CH-68,(CW-68)/2);g.stroke();
+    g.restore();
+  });
+  g.restore();
+  return {CY};
+}
+
+function draw(ms){
+  const t=clamp(ms,0,DUR)/1000;
+  g.fillStyle=GRAY;g.fillRect(0,0,W,H);
+  // 颜色从两只耳罩涌进来
+  const wp=dock(seg(t,2.0,2.5));
+  if(wp>0){g.fillStyle=RED;g.fillRect(0,0,W/2*wp+2,H);g.fillRect(W-W/2*wp-2,0,W/2*wp+2,H);}
+
+  // 噪音字：抖动 → 扣合后坠落（带拖影防频闪）
+  NW.forEach((n,i)=>{
+    const jx=Math.sin(t*41+n.ph)*3, jy=Math.cos(t*37+n.ph*1.7)*3;
+    let y=n.y, a=1, trails=[];
+    if(t>n.td){
+      const dt=t-n.td, v=7200*dt;
+      y=n.y+0.5*7200*dt*dt;
+      if(y>H+100)return;
+      for(let k=1;k<=3;k++){const d2=Math.max(0,dt-k*0.012);trails.push(n.y+0.5*7200*d2*d2);}
+    }
+    g.save();g.font='700 '+n.size+'px '+FONT;g.textAlign='center';g.textBaseline='middle';
+    trails.forEach((ty,k)=>{g.globalAlpha=0.18*(3-k)/3;g.fillStyle='#8A8984';
+      g.save();g.translate(n.x+jx,ty+jy);g.rotate(n.rot);g.fillText(n.w,0,0);g.restore();});
+    g.globalAlpha=a;g.fillStyle='#8A8984';
+    g.translate(n.x+jx,y+jy);g.rotate(n.rot+(t>n.td?(t-n.td)*0.8*(n.c-.5):0));g.fillText(n.w,0,0);
+    g.restore();
+  });
+
+  // "好吵。"——也是噪音，一起掉
+  {
+    const td=2.1; let y=990, jx=Math.sin(t*29)*2;
+    if(t>td){y=990+0.5*7200*(t-td)*(t-td);}
+    if(y<H+200){
+      if(t>td){for(let k=1;k<=3;k++){const d2=Math.max(0,t-td-k*0.012);txt('好吵。',540+jx,990+0.5*7200*d2*d2,190,INK,0.15*(3-k)/3+0,900);} }
+      txt('好吵。',540+jx,y,190,INK,1,900);
+    }
+  }
+
+  // 声波：你的歌
+  const wv=dock(seg(t,2.55,3.05));
+  if(wv>0){
+    g.save();g.strokeStyle=INK;g.lineWidth=6;g.lineJoin='round';g.beginPath();
+    const x0=540-370*wv, x1=540+370*wv;
+    for(let x=x0;x<=x1;x+=3){
+      const u=(x-540)/370, env=Math.pow(Math.cos(u*Math.PI/2),1.5);
+      const y=1280+env*(46*Math.sin(x*0.045-t*7)+22*Math.sin(x*0.11+t*4.3));
+      x===x0?g.moveTo(x,y):g.lineTo(x,y);
+    }
+    g.stroke();g.restore();
+  }
+
+  // 文字段落
+  const a1=dock(seg(t,2.95,3.25)), o1=away(seg(t,4.4,4.6));
+  if(a1>0&&o1<1) txt('只剩你的歌。',540,960+(1-a1)*40-o1*50,116,INK,a1*(1-o1),700);
+  const a2=dock(seg(t,4.65,5.0));
+  if(a2>0){
+    txt('新耳机',540,920-(1-a2)*60,230,INK,a2,900);
+    const a3=dock(seg(t,4.85,5.15));
+    txt('戴上它',540,1100+(1-a3)*24,84,INK,a3,400);
+  }
+
+  headphones(t);
+}
+
+let fixed=false,t0=null;
+window.__seek=function(ms){fixed=true;draw(ms);};
+function loop(now){ if(fixed)return; if(t0===null)t0=now; draw((now-t0)%DUR); requestAnimationFrame(loop); }
+draw(0);requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

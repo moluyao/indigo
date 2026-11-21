@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>社区图书馆 · 周末活动</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1080px;height:1350px;overflow:hidden;background:#f2e8d5}
+  body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;color:#1d3a2f}
+  .serif{font-family:"Source Han Serif SC","Noto Serif SC","Songti SC","STSong","SimSun",serif}
+  .poster{position:relative;width:1080px;height:1350px;overflow:hidden;
+    background:
+      radial-gradient(circle at 18% 12%, rgba(255,255,255,.55), transparent 42%),
+      #f2e8d5}
+  /* paper grain */
+  .poster::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.18;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='4'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .25  0 0 0 0 .15  0 0 0 .55 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");}
+
+  .top{position:absolute;left:80px;right:80px;top:64px;display:flex;justify-content:space-between;align-items:center;
+    font-size:24px;letter-spacing:4px;font-weight:600}
+  .top .badge{display:flex;align-items:center;gap:14px}
+  .top .dot{width:14px;height:14px;border-radius:50%;background:#e0533a}
+  .top .date{font-size:22px;letter-spacing:2px;font-weight:500;opacity:.8}
+  .rule{position:absolute;left:80px;right:80px;top:112px;height:3px;background:#1d3a2f}
+  .rule2{position:absolute;left:80px;right:80px;top:120px;height:1px;background:#1d3a2f}
+
+  .kicker{position:absolute;left:80px;top:168px;font-size:30px;letter-spacing:10px;color:#e0533a;font-weight:700}
+  h1{position:absolute;left:72px;top:214px;font-size:134px;line-height:1.0;font-weight:900;letter-spacing:-2px;color:#1d3a2f}
+  h1 em{font-style:normal;color:#e0533a}
+  .sub{position:absolute;left:82px;top:650px;font-size:28px;line-height:1.6;letter-spacing:1px;color:#1d3a2f;opacity:.85;width:560px}
+
+  .art{position:absolute;right:0;top:250px;width:470px;height:460px}
+
+  .sched{position:absolute;left:80px;right:80px;top:790px;display:grid;grid-template-columns:1fr 1fr;gap:28px}
+  .day{background:#1d3a2f;color:#f2e8d5;border-radius:6px;padding:34px 38px 30px;position:relative}
+  .day.sun{background:#fbf6ec;color:#1d3a2f;border:3px solid #1d3a2f}
+  .day h3{display:flex;align-items:baseline;gap:16px;font-size:44px;font-weight:900;margin-bottom:22px}
+  .day h3 small{font-size:22px;font-weight:500;letter-spacing:2px;opacity:.75}
+  .item{display:grid;grid-template-columns:96px 1fr;column-gap:10px;padding:16px 0;border-top:1px solid rgba(242,232,213,.28)}
+  .day.sun .item{border-top:1px solid rgba(29,58,47,.22)}
+  .item .t{font-size:28px;font-weight:700;color:#e8b44a;font-variant-numeric:tabular-nums}
+  .day.sun .item .t{color:#e0533a}
+  .item .n{font-size:30px;font-weight:700;line-height:1.3}
+  .item .d{grid-column:2;font-size:21px;opacity:.72;margin-top:6px;letter-spacing:.5px}
+
+  .foot{position:absolute;left:80px;right:80px;bottom:62px;display:flex;justify-content:space-between;align-items:flex-end}
+  .tags{display:flex;gap:14px}
+  .tag{font-size:24px;font-weight:700;padding:10px 20px;border:2px solid #1d3a2f;border-radius:40px}
+  .tag.fill{background:#e0533a;border-color:#e0533a;color:#fff}
+  .where{text-align:right;font-size:22px;line-height:1.6;opacity:.85}
+  .where b{font-size:26px;opacity:1}
+</style>
+</head>
+<body>
+<div class="poster">
+  <div class="top"><div class="badge"><span class="dot"></span>社区图书馆 · 周末活动</div><div class="date">2026.11.21 — 11.22</div></div>
+  <div class="rule"></div><div class="rule2"></div>
+
+  <div class="kicker">THIS WEEKEND</div>
+  <h1 class="serif">周末，<br>来图书馆<br><em>坐坐</em>。</h1>
+  <div class="sub">带上孩子、带上旧书，或者只带上自己。<br>两天四场小活动，全部免费。</div>
+
+  <svg class="art" viewBox="0 0 470 460" xmlns="http://www.w3.org/2000/svg">
+    <!-- window light -->
+    <path d="M60 40 L470 40 L470 440 L60 440 Z" fill="#e8b44a" opacity=".18"/>
+    <circle cx="350" cy="130" r="70" fill="#e8b44a"/>
+    <!-- shelf -->
+    <rect x="40" y="400" width="430" height="18" fill="#1d3a2f"/>
+    <!-- books -->
+    <g>
+      <rect x="62"  y="250" width="44" height="150" fill="#e0533a"/>
+      <rect x="62"  y="270" width="44" height="6" fill="#f2e8d5" opacity=".7"/>
+      <rect x="62"  y="370" width="44" height="6" fill="#f2e8d5" opacity=".7"/>
+      <rect x="110" y="214" width="36" height="186" fill="#1d3a2f"/>
+      <rect x="118" y="240" width="20" height="60" fill="#e8b44a"/>
+      <rect x="150" y="270" width="52" height="130" fill="#7aa38a"/>
+      <rect x="150" y="288" width="52" height="4" fill="#1d3a2f"/>
+      <rect x="150" y="296" width="52" height="4" fill="#1d3a2f"/>
+      <rect x="206" y="232" width="30" height="168" fill="#e8b44a"/>
+      <rect x="206" y="372" width="30" height="10" fill="#1d3a2f"/>
+      <!-- leaning book -->
+      <g transform="rotate(14 270 400)"><rect x="244" y="236" width="40" height="164" fill="#2f5b49"/><rect x="252" y="262" width="24" height="24" rx="12" fill="#f2e8d5" opacity=".8"/></g>
+      <!-- stack lying -->
+      <rect x="318" y="372" width="140" height="28" fill="#e0533a"/>
+      <rect x="326" y="346" width="122" height="26" fill="#fbf6ec" stroke="#1d3a2f" stroke-width="3"/>
+      <rect x="312" y="318" width="132" height="28" fill="#1d3a2f"/>
+      <!-- mug -->
+      <path d="M352 268 h58 v44 a14 14 0 0 1 -14 14 h-30 a14 14 0 0 1 -14 -14 z" fill="#fbf6ec" stroke="#1d3a2f" stroke-width="4"/>
+      <path d="M410 280 a14 14 0 0 1 0 28" fill="none" stroke="#1d3a2f" stroke-width="4"/>
+      <path d="M370 254 q-8 -14 0 -26 M390 254 q-8 -14 0 -26" fill="none" stroke="#1d3a2f" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+    </g>
+    <!-- plant -->
+    <g transform="translate(18 300)">
+      <path d="M22 100 h40 l-6 -40 h-28 z" fill="#e0533a"/>
+      <path d="M42 60 C 30 30, 10 30, 0 10 C 24 12, 40 30, 42 60 Z" fill="#2f5b49"/>
+      <path d="M42 60 C 50 26, 70 18, 84 0 C 82 30, 62 44, 42 60 Z" fill="#7aa38a"/>
+    </g>
+  </svg>
+
+  <div class="sched">
+    <div class="day">
+      <h3>周六 <small>11 / 21</small></h3>
+      <div class="item"><div class="t">10:00</div><div class="n">亲子绘本共读</div><div class="d">3–8 岁 · 儿童阅览区</div></div>
+      <div class="item"><div class="t">14:00</div><div class="n">旧书交换市集</div><div class="d">带一本，换一本</div></div>
+    </div>
+    <div class="day sun">
+      <h3>周日 <small>11 / 22</small></h3>
+      <div class="item"><div class="t">10:00</div><div class="n">老照片里的社区</div><div class="d">邻居分享 · 可带老照片</div></div>
+      <div class="item"><div class="t">15:00</div><div class="n">手作书签工作坊</div><div class="d">限 20 人 · 需报名</div></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="tags"><span class="tag fill">全部免费</span><span class="tag">无需借书证</span><span class="tag">欢迎全家</span></div>
+    <div class="where"><b>报名：图书馆一楼服务台</b><br>周六日 9:00 – 17:00 开放</div>
+  </div>
+</div>
+</body>
+</html>

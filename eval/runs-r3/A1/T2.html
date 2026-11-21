@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>T2 为什么天空是蓝的</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style></head>
+<body><canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function(){
+const W=1920,H=1080,DUR=15000;
+const cv=document.getElementById('c'),g=cv.getContext('2d');
+const FONT='"Microsoft YaHei","PingFang SC",sans-serif';
+const AIR_TOP=380, GROUND=800;
+const V={x:1200,y:792};           // viewer
+const SPEED=1100;                  // px/s
+const COLS=[{n:'红',lam:700,c:'#ff4a3a',rgb:[255,74,58]},{n:'绿',lam:550,c:'#43c768',rgb:[67,199,104]},{n:'蓝',lam:450,c:'#4f86ff',rgb:[79,134,255]}];
+function hash(a,b){let h=(a*374761393+b*668265263)|0;h=(h^(h>>>13))*1274126177|0;h=h^(h>>>16);return (h>>>0)/4294967296;}
+const cl=(x,a,b)=>Math.max(a,Math.min(b,x));
+function ss(a,b,x){const t=cl((x-a)/(b-a),0,1);return t*t*(3-2*t);}
+function lerp(a,b,t){return a+(b-a)*t;}
+// sun position over time
+function sunAt(t){ // seconds
+  const k=ss(9.2,10.6,t);
+  const a0=-Math.PI/2, a1=-Math.PI+0.06; // angle around viewer
+  const ang=lerp(a0,a1,k), R=lerp(682,1000,k);
+  return {x:V.x+Math.cos(ang)*R, y:V.y+Math.sin(ang)*R};
+}
+function sunCol(t){const k=ss(9.6,12.2,t);return [Math.round(lerp(255,255,k)),Math.round(lerp(246,110,k)),Math.round(lerp(224,40,k))];}
+// precompute photons
+const RATE=120, T0=-2, TEND=11.4;
+const P=[];
+for(let i=0;;i++){
+  const ts=T0+i/RATE; if(ts>TEND)break; if(ts>9.1&&ts<10.6)continue;
+  const ci=i%3, ic=Math.floor(i/3);
+  const S=sunAt(ts);
+  const off=(hash(i,1)-0.5)*46;
+  const dx=V.x-S.x, dy=V.y-S.y, L=Math.hypot(dx,dy), ux=dx/L, uy=dy/L;
+  const px=-uy*off, py=ux*off;
+  const sx=S.x+px, sy=S.y+py;
+  // fraction where path enters air (y>=AIR_TOP)
+  let s0=0; if(sy<AIR_TOP){ s0=(AIR_TOP-sy)/(dy); }
+  const La=L*(1-s0);
+  const air = ts>=3.75;
+  const kb = (1/1500)*(1+ (1500/330-1)*ss(9.2,10.4,ts)); // sunset: thicker air (示意)
+  const k = kb*Math.pow(450/COLS[ci].lam,4);
+  const p = air?1-Math.exp(-k*La):0;
+  const u = ((ic*0.6180339887+0.137*ci+0.31)%1);
+  const ph={ts,ci,sx,sy,ux,uy,L,scat:false};
+  if(u<p){
+    const d=-Math.log(1-u)/k;
+    const dist=s0*L+d;
+    ph.scat=true; ph.tsc=ts+dist/SPEED;
+    ph.qx=sx+ux*dist; ph.qy=sy+uy*dist;
+    const th=hash(i,2)*Math.PI*2; ph.vx=Math.cos(th); ph.vy=Math.sin(th);
+    ph.fl=60+hash(i,3)*190;
+  }
+  P.push(ph);
+}
+function counts(t){let b=0,r=0;for(const p of P){if(p.scat&&p.ts>=3.75&&p.ts<9.2&&p.tsc<=t){if(p.ci===2)b++;else if(p.ci===0)r++;}}return [b,r];}
+function dash(x,y,vx,vy,col,a){g.globalAlpha=a;g.strokeStyle=col;g.lineWidth=6;g.lineCap='round';g.beginPath();g.moveTo(x-vx*13,y-vy*13);g.lineTo(x+vx*13,y+vy*13);g.stroke();g.globalAlpha=1;}
+function text(s,x,y,size,col,w,a){g.globalAlpha=a==null?1:a;g.font=(w||'400')+' '+size+'px '+FONT;g.fillStyle=col;g.textBaseline='alphabetic';g.fillText(s,x,y);g.globalAlpha=1;}
+const CAP=[
+  {s:'阳光里，各种颜色的光都有',a:-1,b:3.8},
+  {s:'空气弹开蓝光，约是红光的 6 倍',a:3.8,b:9.2},
+  {s:'傍晚光走得远，蓝光半路就被弹光了',a:9.2,b:99}];
+function draw(ms){
+  const t=cl(ms,0,DUR)/1000;
+  // space
+  g.fillStyle='#050608';g.fillRect(0,0,W,H);
+  // air layer tint
+  const airOn=ss(3.75,4.4,t);
+  const noon=ss(4.0,7.6,t)*(1-ss(9.4,11.0,t));
+  const eve=ss(10.4,12.8,t);
+  if(noon>0){g.fillStyle=`rgba(64,124,226,${0.62*noon})`;g.fillRect(0,AIR_TOP,W,GROUND-AIR_TOP);}
+  if(eve>0){const gr=g.createLinearGradient(0,0,W,0);
+    gr.addColorStop(0,`rgba(60,105,210,${0.45*eve})`);gr.addColorStop(0.45,`rgba(150,100,140,${0.35*eve})`);gr.addColorStop(0.85,`rgba(236,112,48,${0.62*eve})`);gr.addColorStop(1,`rgba(236,112,48,${0.62*eve})`);
+    g.fillStyle=gr;g.fillRect(0,AIR_TOP,W,GROUND-AIR_TOP);}
+  // air boundary + molecules
+  if(airOn>0){
+    g.globalAlpha=0.5*airOn;g.strokeStyle='#8fa6c8';g.lineWidth=2;g.setLineDash([10,10]);g.beginPath();g.moveTo(0,AIR_TOP);g.lineTo(W,AIR_TOP);g.stroke();g.setLineDash([]);
+    g.fillStyle='#c9d4e6';
+    for(let j=0;j<520;j++){const x=hash(j,7)*W,y=AIR_TOP+8+hash(j,8)*(GROUND-AIR_TOP-16);g.globalAlpha=0.32*airOn;g.fillRect(x,y,3,3);}
+    g.globalAlpha=1;
+    text('空气层',128,AIR_TOP+58,46,'#c3d0e4','400',0.95*airOn);
+  }
+  // sun
+  const S=sunAt(t), sc=sunCol(t);
+  g.fillStyle=`rgb(${sc[0]},${sc[1]},${sc[2]})`;g.beginPath();g.arc(S.x,S.y,70,0,Math.PI*2);g.fill();
+  // photons
+  for(const p of P){
+    const age=t-p.ts; if(age<0)continue;
+    if(!p.scat){
+      const d=age*SPEED; if(d>p.L)continue;
+      const x=p.sx+p.ux*d,y=p.sy+p.uy*d; if(Math.hypot(x-S.x,y-S.y)<60&&age<0.2)continue;
+      dash(x,y,p.ux,p.uy,COLS[p.ci].c,0.95);
+    }else{
+      if(t<p.tsc){const d=age*SPEED;const x=p.sx+p.ux*d,y=p.sy+p.uy*d;dash(x,y,p.ux,p.uy,COLS[p.ci].c,0.95);}
+      else{
+        const a2=t-p.tsc, fd=Math.min(a2*SPEED*0.55,p.fl);
+        let x=p.qx+p.vx*fd,y=p.qy+p.vy*fd; y=cl(y,AIR_TOP+4,GROUND-4);
+        if(fd<p.fl) dash(x,y,p.vx,p.vy,COLS[p.ci].c,0.95);
+        else{const life=a2-p.fl/(SPEED*0.55);const al=0.8*(1-cl(life/1.2,0,1));if(al>0){g.globalAlpha=al;g.fillStyle=COLS[p.ci].c;g.beginPath();g.arc(x,y,5,0,7);g.fill();g.globalAlpha=1;}}
+      }
+    }
+  }
+  // ground
+  g.fillStyle='#211d1a';g.fillRect(0,GROUND,W,H-GROUND);
+  g.fillStyle='#3a332d';g.fillRect(0,GROUND,W,4);
+  // viewer
+  g.fillStyle='#f2efe9';g.beginPath();g.arc(V.x,V.y-4,10,0,7);g.fill();
+  text('你',V.x+22,GROUND+56,46,'#d8d2c8','700');
+  // title + note (stop-read)
+  text('天空为什么是蓝的？',128,96,52,'#e8ecf2','700');
+  g.textAlign='right';text('示意图，比例不真实',W-128,96,46,'#9aa3ae','400');g.textAlign='left';
+  // legend (A) near sun
+  const lg=1-ss(3.4,3.8,t);
+  if(lg>0){for(let k=0;k<3;k++){const c=COLS[k],y=170+k*66;g.globalAlpha=lg;g.strokeStyle=c.c;g.lineWidth=8;g.lineCap='round';g.beginPath();g.moveTo(128,y-16);g.lineTo(168,y-16);g.stroke();g.globalAlpha=1;text(c.n+'光 '+c.lam+' nm',188,y,46,'#e8ecf2','400',lg);}}
+  // counter (B)
+  const ca=ss(4.0,4.4,t)*(1-ss(9.2,9.6,t));
+  if(ca>0){const [b,r]=counts(Math.min(t,9.2));
+    text('被空气弹开的光点',128,190,46,'#c9d2de','400',ca);
+    text('蓝 '+b,128,272,64,'#7aa6ff','700',ca);
+    text('红 '+r,378,272,64,'#ff7a6a','700',ca);}
+  // captions
+  for(const c of CAP){
+    const a=(c.a<0?1:ss(c.a,c.a+0.15,t))*(1-ss(c.b,c.b+0.15,t));
+    if(a>0) text(c.s,128,GROUND+168,92,'#ffffff','700',a);
+  }
+}
+window.__seek=function(ms){draw(ms);};
+draw(0);
+const start=performance.now();
+function loop(){const ms=performance.now()-start; if(window.__stop)return; draw(ms%DUR); requestAnimationFrame(loop);}
+window.__stopAuto=function(){window.__stop=true;};
+requestAnimationFrame(loop);
+const _seek=window.__seek; window.__seek=function(ms){window.__stop=true;_seek(ms);};
+})();
+</script></body></html>

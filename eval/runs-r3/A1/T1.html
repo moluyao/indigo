@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>T1 社区图书馆周末朗读会</title>
+<style>
+html,body{margin:0;padding:0;background:#cfd5ce}
+#p{position:relative;width:1080px;height:1350px;overflow:hidden;
+  background:linear-gradient(180deg,#e3e7e1 0%,#d6dcd5 55%,#cbd2ca 100%);
+  font-family:"Microsoft YaHei","PingFang SC",sans-serif;color:#1c2a22}
+/* faint wall texture */
+#p:before{content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,rgba(0,0,0,.012) 0 2px,transparent 2px 7px);}
+.lib{position:absolute;left:84px;top:66px;font-size:34px;color:#46504a;letter-spacing:2px}
+/* the acrylic sign */
+.sign{position:absolute;left:84px;top:140px;width:912px;height:660px;border-radius:18px;
+  background:linear-gradient(160deg,#25604a 0%,#1d4f3d 45%,#174334 100%);
+  box-shadow:0 18px 30px rgba(20,40,30,.28),0 2px 0 rgba(255,255,255,.25) inset,0 -3px 0 rgba(0,0,0,.25) inset}
+.sign:after{content:"";position:absolute;inset:0;border-radius:18px;
+  background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.10) 38%,rgba(255,255,255,.03) 46%,transparent 52%);}
+.screw{position:absolute;width:22px;height:22px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#f2f2ee,#9aa19c 60%,#6b726d);
+  box-shadow:0 1px 2px rgba(0,0,0,.5)}
+.screw:after{content:"";position:absolute;left:4px;right:4px;top:10px;height:2px;background:#5d635f;transform:rotate(35deg)}
+.room{position:absolute;left:0;right:0;top:52px;text-align:center;color:#e9f1ec;font-size:44px;letter-spacing:22px;font-family:"SimHei",sans-serif}
+.rule{position:absolute;left:300px;right:300px;top:124px;height:3px;background:rgba(233,241,236,.55)}
+.l1{position:absolute;left:0;right:0;top:138px;text-align:center;color:#fff;font-family:"SimHei",sans-serif;font-size:120px;letter-spacing:14px}
+.l2{position:absolute;left:0;right:0;top:322px;text-align:center;color:#fff;font-family:"SimHei",sans-serif;font-size:236px;letter-spacing:30px;line-height:1}
+.en{position:absolute;left:0;right:0;bottom:30px;text-align:center;color:rgba(233,241,236,.78);font-size:38px;letter-spacing:9px;font-family:Arial,sans-serif}
+/* the yellow note taped over 安静 */
+.note{position:absolute;left:170px;top:318px;width:572px;height:226px;transform:rotate(-4.5deg);
+  background:linear-gradient(170deg,#fbe94a 0%,#f6dc2c 70%,#efd123 100%);
+  box-shadow:0 10px 16px rgba(0,0,0,.35),0 1px 0 rgba(255,255,255,.6) inset}
+.note .w{position:absolute;left:0;right:0;top:6px;text-align:center;font-family:"STXingkai","STKaiti",serif;
+  font-size:210px;line-height:1;color:#171717;letter-spacing:4px;white-space:nowrap}
+.tape{position:absolute;width:150px;height:46px;background:rgba(245,243,230,.62);
+  box-shadow:0 1px 2px rgba(0,0,0,.12)}
+/* info */
+.h{position:absolute;left:84px;top:862px;font-size:72px;font-weight:700;letter-spacing:2px;color:#17241c}
+.box{position:absolute;left:84px;top:1000px;width:912px;height:250px;border:3px solid #6f7a72;border-radius:6px}
+.tag{position:absolute;left:24px;top:-20px;padding:0 12px;background:#d3d9d2;font-size:28px;color:#4b544e}
+.i1{position:absolute;left:36px;top:44px;font-size:56px;font-weight:700;color:#17241c}
+.i2{position:absolute;left:36px;top:142px;font-size:50px;color:#24322a}
+</style></head>
+<body><div id="p">
+  <div class="lib">阳光社区图书馆</div>
+  <div class="sign">
+    <div class="screw" style="left:26px;top:26px"></div><div class="screw" style="right:26px;top:26px"></div>
+    <div class="screw" style="left:26px;bottom:26px"></div><div class="screw" style="right:26px;bottom:26px"></div>
+    <div class="room">阅览室</div><div class="rule"></div>
+    <div class="l1">请保持</div>
+    <div class="l2">安静</div>
+    <div class="en">PLEASE KEEP QUIET</div>
+    <div class="note"><div class="w">大声</div></div>
+    <div class="tape" style="left:138px;top:318px;transform:rotate(-40deg)"></div>
+    <div class="tape" style="left:646px;top:506px;transform:rotate(-40deg)"></div>
+  </div>
+  <div class="h">这周六，来图书馆大声朗读</div>
+  <div class="box"><span class="tag">示例信息，发布前替换</span>
+    <div class="i1">11月21日（周六）10:00–11:30</div>
+    <div class="i2">二楼少儿阅览室　免费，带孩子直接来</div>
+  </div>
+</div></body></html>

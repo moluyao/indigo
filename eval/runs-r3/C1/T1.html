@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>社区图书馆 · 周末</title>
+<style>
+  html,body{margin:0;padding:0;}
+  body{width:1080px;height:1350px;overflow:hidden;background:#B48A55;
+       font-family:"Microsoft YaHei","PingFang SC","Noto Sans CJK SC",sans-serif;}
+  /* 书后的牛皮纸口袋 */
+  .pocket{position:absolute;left:0;right:0;bottom:0;height:260px;background:#A57D4B;
+          border-top:3px solid #8E6A3D;}
+  .card{position:absolute;left:62px;top:46px;width:956px;height:1238px;background:#EAD8A8;
+        clip-path:polygon(0 0,calc(100% - 64px) 0,100% 64px,100% 100%,0 100%);
+        box-shadow:0 0 0 1px #CDB680 inset;}
+  .ink{color:#1F2A5C;}
+  .head{position:absolute;left:64px;right:64px;top:62px;display:flex;align-items:baseline;justify-content:space-between;}
+  .head .lib{font-size:52px;font-weight:700;letter-spacing:4px;}
+  .head .kind{font-size:30px;letter-spacing:6px;}
+  .rule2{position:absolute;left:64px;right:64px;top:146px;height:4px;border-top:3px solid #1F2A5C;border-bottom:1px solid #1F2A5C;}
+  .grid{position:absolute;left:64px;right:64px;top:190px;height:616px;}
+  .grid .colh{position:absolute;top:0;font-size:26px;letter-spacing:4px;}
+  .grid .row{position:absolute;left:0;right:0;height:0;border-top:2px solid #1F2A5C;opacity:.85;}
+  .grid .vline{position:absolute;top:0;bottom:0;width:0;border-left:2px solid #1F2A5C;opacity:.85;}
+  .old{position:absolute;font-family:"SimHei","Microsoft YaHei",sans-serif;font-size:46px;letter-spacing:10px;
+       white-space:nowrap;line-height:1;padding:8px 14px;border:3px solid currentColor;border-radius:6px;
+       color:#6E55A3;}
+  .old .d{font-family:Consolas,"SimHei",monospace;font-size:30px;letter-spacing:2px;margin-left:12px;vertical-align:4px;}
+  .big{position:absolute;left:150px;top:418px;width:640px;transform:rotate(-7deg);transform-origin:50% 50%;
+       color:#D3341F;mix-blend-mode:multiply;text-align:center;}
+  .big .frame{border:12px solid currentColor;border-radius:18px;padding:10px;}
+  .big .inner{border:4px solid currentColor;border-radius:10px;padding:18px 0 26px;
+       -webkit-mask-image:linear-gradient(100deg,rgba(0,0,0,.98) 0%,rgba(0,0,0,.9) 55%,rgba(0,0,0,.72) 100%);
+               mask-image:linear-gradient(100deg,rgba(0,0,0,.98) 0%,rgba(0,0,0,.9) 55%,rgba(0,0,0,.72) 100%);}
+  .big .w{font-family:"SimHei","Microsoft YaHei",sans-serif;font-size:250px;line-height:1;letter-spacing:24px;margin-right:-24px;font-weight:700;}
+  .big .s{font-size:62px;font-weight:700;letter-spacing:22px;margin-right:-22px;margin-top:8px;}
+  .big .frame{-webkit-mask-image:linear-gradient(100deg,#000 0%,rgba(0,0,0,.92) 60%,rgba(0,0,0,.75) 100%);
+                      mask-image:linear-gradient(100deg,#000 0%,rgba(0,0,0,.92) 60%,rgba(0,0,0,.75) 100%);}
+  .fields{position:absolute;left:64px;right:64px;top:850px;}
+  .f{display:flex;align-items:flex-end;height:92px;}
+  .f .l{font-size:36px;font-weight:700;letter-spacing:8px;width:150px;padding-bottom:12px;}
+  .f .blank{flex:1;border-bottom:2px solid #1F2A5C;height:72px;}
+  .foot{position:absolute;left:64px;right:64px;bottom:52px;display:flex;justify-content:space-between;font-size:26px;letter-spacing:3px;}
+  .hole{position:absolute;left:478px;top:20px;width:0;height:0;}
+</style>
+</head>
+<body>
+<div class="pocket"></div>
+<div class="card">
+  <div class="head ink"><div class="lib">社区图书馆</div><div class="kind">还书日期卡</div></div>
+  <div class="rule2"></div>
+
+  <div class="grid ink" id="grid">
+    <div class="colh" style="left:8px;top:14px">日 期</div>
+    <div class="colh" style="left:472px;top:14px">日 期</div>
+  </div>
+
+  <div class="fields ink">
+    <div class="f"><div class="l">活动</div><div class="blank"></div></div>
+    <div class="f"><div class="l">时间</div><div class="blank"></div></div>
+    <div class="f"><div class="l">地点</div><div class="blank"></div></div>
+  </div>
+
+  <div class="foot ink"><span>周六　周日　欢迎全家来</span><span>请勿在书上涂写</span></div>
+</div>
+
+<script>
+(function(){
+  const g=document.getElementById('grid');
+  const W=828, top0=62, rh=79; // 7 行
+  for(let i=0;i<=7;i++){const r=document.createElement('div');r.className='row';r.style.top=(top0+i*rh)+'px';g.appendChild(r);}
+  [0,414,828].forEach(x=>{const v=document.createElement('div');v.className='vline';v.style.left=x+'px';v.style.top=top0+'px';g.appendChild(v);});
+  // 固定种子
+  let s=20261120;const rnd=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};
+  const days=['一','二','三','四','五'];
+  days.forEach((d,i)=>{
+    const e=document.createElement('div');e.className='old';
+    e.textContent='星期'+d;
+    const rot=(rnd()*6-3).toFixed(2), dx=Math.round(rnd()*40)+40, op=(0.5+rnd()*0.28).toFixed(2);
+    e.style.left=dx+'px';e.style.top=(top0+i*rh+12)+'px';
+    e.style.transform='rotate('+rot+'deg)';e.style.opacity=op;
+    // 印章受力不均：一侧墨重一侧墨轻
+    const a=(rnd()*180).toFixed(0);
+    e.style.webkitMaskImage=e.style.maskImage='linear-gradient('+a+'deg,#000 0%,rgba(0,0,0,.85) 50%,rgba(0,0,0,.45) 100%)';
+    g.appendChild(e);
+  });
+  const big=document.createElement('div');big.className='big';
+  big.innerHTML='<div class="frame"><div class="inner"><div class="w">周末</div><div class="s">来图书馆</div></div></div>';
+  g.appendChild(big);
+  big.style.left='96px';big.style.top='212px';
+})();
+</script>
+</body>
+</html>

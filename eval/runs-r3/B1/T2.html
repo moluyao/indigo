@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>天空为什么是蓝色的</title>
+<style>
+  html,body{margin:0;padding:0;width:1920px;height:1080px;overflow:hidden;background:#0B1026}
+  canvas{display:block}
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function(){
+const W=1920,H=1080,DUR=15000;
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const FONT='"Microsoft YaHei","PingFang SC","Hiragino Sans GB","Noto Sans CJK SC",sans-serif';
+
+// ---------- utils ----------
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const seg=(t,a,b)=>clamp((t-a)/(b-a),0,1);
+const eo=x=>1-Math.pow(1-x,3);
+const eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const lerp=(a,b,k)=>a+(b-a)*k;
+function win(t,a,b,fi,fo){let v=1;if(fi)v=Math.min(v,seg(t,a,a+fi));if(fo)v=Math.min(v,1-seg(t,b-fo,b));return(t<a||t>b)?0:v;}
+function hex(c){return[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];}
+function mix(c1,c2,k){const a=hex(c1),b=hex(c2);return`rgb(${Math.round(lerp(a[0],b[0],k))},${Math.round(lerp(a[1],b[1],k))},${Math.round(lerp(a[2],b[2],k))})`;}
+function text(s,x,y,size,color,weight,align,alpha){ctx.save();ctx.globalAlpha*=alpha==null?1:alpha;ctx.font=`${weight||700} ${size}px ${FONT}`;ctx.fillStyle=color;ctx.textAlign=align||'left';ctx.textBaseline='alphabetic';ctx.fillText(s,x,y);ctx.restore();}
+function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+// sine wave along a straight line from (x0,y0) to (x1,y1)
+function wave(x0,y0,x1,y1,L,A,phase,color,lw,fadeTail){
+  const dx=x1-x0,dy=y1-y0,len=Math.hypot(dx,dy);if(len<1)return;
+  const ux=dx/len,uy=dy/len,nx=-uy,ny=ux;
+  ctx.save();ctx.strokeStyle=color;ctx.lineWidth=lw||5;ctx.lineCap='round';ctx.lineJoin='round';
+  if(fadeTail){const g=ctx.createLinearGradient(x0,y0,x1,y1);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,color);ctx.strokeStyle=g;}
+  ctx.beginPath();
+  for(let s=0;s<=len;s+=3){const o=A*Math.sin((s/L)*Math.PI*2-phase);const px=x0+ux*s+nx*o,py=y0+uy*s+ny*o;s===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
+  ctx.stroke();ctx.restore();
+}
+function heading(num,str,alpha,t0,t){
+  const k=eo(seg(t,t0,t0+600));
+  ctx.save();ctx.globalAlpha=alpha*k;ctx.translate(0,(1-k)*24);
+  ctx.fillStyle='#FFD25A';rrect(120,92,88,56,28);ctx.fill();
+  text(num,164,134,32,'#0B1026',900,'center');
+  text(str,232,138,52,'#FFFFFF',800,'left');
+  ctx.restore();
+}
+function caption(str,y,alpha,color){
+  ctx.save();ctx.globalAlpha=alpha;ctx.font=`600 38px ${FONT}`;const w=ctx.measureText(str).width+72;
+  ctx.fillStyle='rgba(8,12,30,.72)';rrect(W/2-w/2,y-54,w,78,39);ctx.fill();
+  text(str,W/2,y,38,color||'#EAF2FF',600,'center');ctx.restore();
+}
+
+const COLORS=['#FF4D4D','#FF9A3C','#FFE14D','#5BE37D','#3FD0E0','#3D7BFF','#9B5CFF'];
+const WL=[118,104,92,82,72,60,52];
+
+// ---------- precomputed (seeded) ----------
+const R=rng(20261120);
+const mols=[];for(let i=0;i<30;i++)mols.push({x:620+R()*700,y:250+R()*620,a:R()*Math.PI,ph:R()*6.28});
+const packets=[];
+for(let i=0;i<30;i++){
+  const blue=i%2===0;const ti=6700+i*125+R()*60;const y=270+R()*580;
+  const scat=blue||R()<0.12;
+  // choose nearest molecule ahead roughly at random depth
+  const m=mols[Math.floor(R()*mols.length)];
+  packets.push({blue,ti,y,scat,hx:m.x,hy:m.y,mi:mols.indexOf(m),ang:(R()*2-1)*Math.PI*0.95+ (R()<.5?Math.PI:0)});
+}
+const SKYPTS=[];for(let i=0;i<22;i++)SKYPTS.push({x:120+R()*1680,y:200+R()*520,d:R()*1400});
+
+// ---------- scenes ----------
+function bgDark(a){ctx.save();ctx.globalAlpha=a;const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0B1026');g.addColorStop(1,'#141B3D');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.restore();}
+
+function scene1(t,a){
+  if(a<=0)return;ctx.save();ctx.globalAlpha=a;
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1F63D6');g.addColorStop(.6,'#5FA6F0');g.addColorStop(1,'#CFE8FF');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // sun
+  const sk=eo(seg(t,0,1200));const sx=1460,sy=330;
+  const sg=ctx.createRadialGradient(sx,sy,0,sx,sy,420*sk);sg.addColorStop(0,'rgba(255,250,220,.95)');sg.addColorStop(.25,'rgba(255,240,180,.55)');sg.addColorStop(1,'rgba(255,240,180,0)');
+  ctx.fillStyle=sg;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#FFF8DC';ctx.beginPath();ctx.arc(sx,sy,90*sk,0,7);ctx.fill();
+  // clouds
+  const cx=lerp(-200,140,t/3000);
+  ctx.fillStyle='rgba(255,255,255,.85)';[[0,0,70],[70,-30,80],[150,0,66],[80,20,70]].forEach(c=>{ctx.beginPath();ctx.arc(cx+300+c[0],760+c[1],c[2],0,7);ctx.fill();});
+  // title
+  const k=eo(seg(t,0,800));
+  ctx.save();ctx.globalAlpha*=k;ctx.translate(0,(1-k)*40);
+  ctx.shadowColor='rgba(10,30,80,.35)';ctx.shadowBlur=30;
+  text('天空，为什么是蓝色的？',140,520,124,'#FFFFFF',900);
+  ctx.restore();
+  const k2=eo(seg(t,500,1200));
+  text('答案藏在阳光和空气里 ——',146,620,46,'rgba(255,255,255,.92)',600,'left',k2);
+  ctx.restore();
+}
+
+function scene2(t,a){
+  if(a<=0)return;ctx.save();ctx.globalAlpha=a;bgDark(1);
+  heading('01','阳光看着是白的，其实是七种颜色混在一起',1,2900,t);
+  // sun
+  const sg=ctx.createRadialGradient(40,560,0,40,560,320);sg.addColorStop(0,'rgba(255,245,200,1)');sg.addColorStop(.35,'rgba(255,220,120,.6)');sg.addColorStop(1,'rgba(255,200,80,0)');
+  ctx.fillStyle=sg;ctx.fillRect(0,200,420,720);ctx.fillStyle='#FFF4C8';ctx.beginPath();ctx.arc(-10,560,150,0,7);ctx.fill();
+  // white beam
+  const bk=eio(seg(t,3200,4100));const bx0=150,bx1=lerp(150,640,bk);
+  if(bk>0){ctx.save();ctx.shadowColor='#fff';ctx.shadowBlur=24;wave(bx0,560,bx1,560,80,0,0,'#FFFFFF',14);ctx.restore();}
+  text('白光',380,520,34,'rgba(255,255,255,.85)',700,'center',seg(t,3600,4000));
+  // fan out
+  const fk=eio(seg(t,4000,5300));
+  if(fk>0){
+    for(let i=0;i<7;i++){
+      const ty=290+i*90;const ex=lerp(640,1400,fk),ey=lerp(560,ty,fk);
+      wave(640,560,ex,ey,WL[i],13*fk,t/90,COLORS[i],5);
+      if(fk>.98) wave(1400,ty,1460,ty,WL[i],13,t/90+0,COLORS[i],5);
+    }
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(640,560,10,0,7);ctx.fill();
+  }
+  // labels
+  const lk=eo(seg(t,5200,5800));
+  if(lk>0){
+    ctx.save();ctx.globalAlpha*=lk;ctx.translate((1-lk)*30,0);
+    text('红光',1500,302,40,'#FF6B6B',800);text('波长长 · 约 700 纳米',1600,302,30,'rgba(255,255,255,.75)',500);
+    text('蓝光',1500,752,40,'#5B92FF',800);text('波长短 · 约 450 纳米',1600,752,30,'rgba(255,255,255,.75)',500);
+    // bracket showing wavelength
+    ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=2;
+    ctx.restore();
+  }
+  caption('记住：蓝光的“波”更密、更短',1000,seg(t,5600,6000));
+  ctx.restore();
+}
+
+function scene3(t,a){
+  if(a<=0)return;ctx.save();ctx.globalAlpha=a;bgDark(1);
+  heading('02','空气分子特别爱把蓝光“撞散”',1,6800,t);
+  // molecule zone tint
+  const zg=ctx.createRadialGradient(970,560,40,970,560,520);zg.addColorStop(0,'rgba(80,120,255,.10)');zg.addColorStop(1,'rgba(80,120,255,0)');ctx.fillStyle=zg;ctx.fillRect(400,200,1150,800);
+  text('空气分子（氮气、氧气）',970,226,28,'rgba(255,255,255,.55)',500,'center');
+  // molecules
+  const flash=new Array(mols.length).fill(0);
+  packets.forEach(p=>{if(!p.scat)return;const v=1.05;const th=p.ti+(p.hx+60)/v;const d=t-th;if(d>=0&&d<500)flash[p.mi]=Math.max(flash[p.mi],1-d/500);});
+  mols.forEach((m,i)=>{
+    const jx=Math.sin(t/300+m.ph)*4,jy=Math.cos(t/340+m.ph)*4;const x=m.x+jx,y=m.y+jy;
+    if(flash[i]>0){ctx.strokeStyle=`rgba(120,170,255,${flash[i]*.8})`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,16+(1-flash[i])*40,0,7);ctx.stroke();}
+    const ox=Math.cos(m.a+t/1200)*9,oy=Math.sin(m.a+t/1200)*9;
+    ctx.fillStyle='rgba(200,215,255,.85)';ctx.beginPath();ctx.arc(x-ox,y-oy,8,0,7);ctx.fill();ctx.beginPath();ctx.arc(x+ox,y+oy,8,0,7);ctx.fill();
+  });
+  // packets
+  ctx.save();ctx.beginPath();ctx.rect(0,170,1390,H-170);ctx.clip();
+  packets.forEach(p=>{
+    const v=1.05;const d=t-p.ti;if(d<0)return;
+    const col=p.blue?'#4D8BFF':'#FF5A5A';const L=p.blue?34:70;const len=p.blue?130:160;
+    let hx,hy,dx,dy;const x0=-60;
+    const travel=d*v;const hitDist=p.hx-x0;
+    if(!p.scat||travel<hitDist){hx=x0+travel;hy=p.scat?lerp(p.y,p.hy,Math.min(1,travel/hitDist)):p.y;dx=1;dy=p.scat?(p.hy-p.y)/hitDist:0;const n=Math.hypot(dx,dy);dx/=n;dy/=n;}
+    else{const r=travel-hitDist;dx=Math.cos(p.ang);dy=Math.sin(p.ang);hx=p.hx+dx*r;hy=p.hy+dy*r;}
+    if(hx<-200||hx>2100||hy<-200||hy>1300)return;
+    ctx.save();ctx.shadowColor=col;ctx.shadowBlur=14;
+    wave(hx-dx*len,hy-dy*len,hx,hy,L,9,t/60,col,4,true);
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(hx,hy,4,0,7);ctx.fill();ctx.restore();
+  });
+  ctx.restore();
+  // legend + bars
+  const pk=eo(seg(t,7800,8400));
+  ctx.save();ctx.globalAlpha*=pk;
+  ctx.fillStyle='rgba(255,255,255,.06)';rrect(1430,230,400,700,26);ctx.fill();
+  text('被撞散的程度',1630,300,34,'#FFFFFF',800,'center');
+  const bk=eio(seg(t,8400,9600));const base=800,maxH=420;
+  ctx.fillStyle='#FF5A5A';rrect(1500,base-maxH/5.5*bk,100,maxH/5.5*bk,10);ctx.fill();
+  ctx.fillStyle='#4D8BFF';ctx.shadowColor='#4D8BFF';ctx.shadowBlur=30*bk;rrect(1660,base-maxH*bk,100,maxH*bk,10);ctx.fill();ctx.shadowBlur=0;
+  text('红光',1550,850,30,'#FF8A8A',700,'center');text('蓝光',1710,850,30,'#8AB2FF',700,'center');
+  text('1 倍',1550,base-maxH/5.5*bk-18,30,'#fff',800,'center',seg(t,9200,9600));
+  text('约 5.5 倍',1710,base-maxH*bk-18,34,'#fff',900,'center',seg(t,9200,9600));
+  text('波长越短，散射越强（∝ 1/波长⁴）',1630,904,22,'rgba(255,255,255,.6)',500,'center',seg(t,9400,9900));
+  ctx.restore();
+  caption('红光大多直直穿过去，蓝光被撞得满天乱飞',1030,seg(t,9800,10200));
+  ctx.restore();
+}
+
+function person(x,y,s){
+  ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle='#14231B';
+  ctx.beginPath();ctx.arc(0,-150,30,0,7);ctx.fill();
+  rrect(-28,-112,56,100,22);ctx.fill();
+  ctx.fillRect(-22,-20,16,70);ctx.fillRect(6,-20,16,70);
+  ctx.restore();
+}
+
+function scene4(t,a){
+  if(a<=0)return;ctx.save();ctx.globalAlpha=a;
+  const sk=eio(seg(t,11200,13000));
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,mix('#0B1026','#1C5FD4',sk));g.addColorStop(.7,mix('#141B3D','#6BB0F2',sk));g.addColorStop(1,mix('#141B3D','#D4ECFF',sk));
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // sun + beam
+  const sx=260,sy=230;
+  const sg=ctx.createRadialGradient(sx,sy,0,sx,sy,260);sg.addColorStop(0,'rgba(255,250,220,1)');sg.addColorStop(.3,'rgba(255,240,180,.45)');sg.addColorStop(1,'rgba(255,240,180,0)');ctx.fillStyle=sg;ctx.fillRect(0,0,700,600);
+  ctx.fillStyle='#FFF8DC';ctx.beginPath();ctx.arc(sx,sy,62,0,7);ctx.fill();
+  ctx.save();ctx.strokeStyle='rgba(255,255,240,.55)';ctx.lineWidth=10;ctx.shadowColor='#fff';ctx.shadowBlur=20;
+  ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(lerp(sx,1900,eo(seg(t,11000,11800))),lerp(sy,520,eo(seg(t,11000,11800))));ctx.stroke();ctx.restore();
+  // ground
+  ctx.fillStyle='#1E3A2C';ctx.beginPath();ctx.moveTo(0,930);ctx.quadraticCurveTo(700,860,1300,915);ctx.quadraticCurveTo(1650,945,W,900);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fill();
+  const ex=1200,ey=760;person(ex,ey+150,1);
+  // blue light arriving from everywhere
+  SKYPTS.forEach((p,i)=>{
+    const st=11400+p.d;const k=seg(t,st,st+900);if(k<=0)return;
+    const dx=ex-p.x,dy=(ey-12)-p.y,len=Math.hypot(dx,dy);
+    const hk=eio(k);const hx=p.x+dx*hk,hy=p.y+dy*hk;const tl=Math.min(160,len*hk);
+    const ux=dx/len,uy=dy/len;
+    ctx.save();ctx.globalAlpha*=(k<1?1:Math.max(0,1-(t-st-900)/600));ctx.shadowColor='#7FB2FF';ctx.shadowBlur=12;
+    wave(hx-ux*tl,hy-uy*tl,hx,hy,34,7,t/60,'#BFD8FF',4,true);ctx.restore();
+    ctx.fillStyle=`rgba(220,235,255,${.7*(1-k)})`;ctx.beginPath();ctx.arc(p.x,p.y,6+k*14,0,7);ctx.fill();
+  });
+  // eye glow
+  const eg=seg(t,12000,12600);ctx.fillStyle=`rgba(140,190,255,${.5*eg})`;ctx.beginPath();ctx.arc(ex,ey-10,46,0,7);ctx.fill();
+  heading('03','撞散的蓝光，从四面八方钻进你的眼睛',1,11100,t);
+  // conclusion
+  const ck=eo(seg(t,12900,13600));
+  if(ck>0){ctx.save();ctx.globalAlpha*=ck;ctx.translate(0,(1-ck)*30);ctx.fillStyle='rgba(12,40,100,.55)';rrect(W/2-720,560,1440,130,65);ctx.fill();
+    text('所以，抬头看到的整片天空都是蓝色',W/2,652,76,'#FFFFFF',900,'center');ctx.restore();}
+  // sunset note
+  const nk=eo(seg(t,13700,14300));
+  if(nk>0){ctx.save();ctx.globalAlpha*=nk;
+    ctx.fillStyle='rgba(10,16,40,.75)';rrect(1340,950,520,96,20);ctx.fill();
+    const sgr=ctx.createLinearGradient(1366,970,1366,1026);sgr.addColorStop(0,'#FF8A3C');sgr.addColorStop(1,'#FF4D6D');ctx.fillStyle=sgr;ctx.beginPath();ctx.arc(1400,998,26,0,7);ctx.fill();
+    text('那夕阳为什么红？',1446,988,26,'#FFD25A',800);
+    text('光斜穿更厚的空气，蓝光半路散光了',1446,1026,22,'rgba(255,255,255,.85)',500);
+    ctx.restore();}
+  ctx.restore();
+}
+
+function draw(t){
+  ctx.clearRect(0,0,W,H);ctx.globalAlpha=1;
+  bgDark(1);
+  scene1(t,win(t,0,3100,0,400));
+  scene2(t,win(t,2700,6900,400,400));
+  scene3(t,win(t,6500,11300,400,400));
+  scene4(t,win(t,10900,15001,400,0));
+}
+
+let seeking=false,start=performance.now();
+window.__seek=function(ms){seeking=true;draw(clamp(+ms||0,0,DUR));};
+function loop(now){if(!seeking){draw((now-start)%DUR);}requestAnimationFrame(loop);}
+draw(0);requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

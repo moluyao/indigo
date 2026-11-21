@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>T3 耳机 6 秒</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style></head>
+<body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+(function(){
+const W=1080,H=1920,DUR=6000;
+const cv=document.getElementById('c'),g=cv.getContext('2d');
+const FONT='"Microsoft YaHei","PingFang SC",sans-serif';
+const cl=(x,a,b)=>Math.max(a,Math.min(b,x));
+const lerp=(a,b,t)=>a+(b-a)*t;
+function ss(a,b,x){const t=cl((x-a)/(b-a),0,1);return t*t*(3-2*t);}
+function ein(a,b,x){const t=cl((x-a)/(b-a),0,1);return t*t*t;}      // accelerate, hard stop
+const CX=540,CY=830,CLAMP0=1.7,CLAMP1=2.1;
+const TAGS=[
+ ['[地铁进站广播]',96,190],['[电钻声]',640,250],['[有人大声打电话]',250,352],
+ ['[小孩哭闹]',90,464],['[喇叭声]',716,454],
+ ['[外卖提示音]',86,1130],['[邻座视频外放]',548,1196],['[施工噪音]',230,1300]];
+g.font='700 50px '+FONT;
+const T=TAGS.map((a,i)=>{const w=g.measureText(a[0]).width+44;const x=a[1],y=a[2];
+  const d=Math.hypot(x+w/2-CX,y+39-CY);return {s:a[0],x,y,w,h:80,d,ph:i*1.7,f:3+(i%3)*0.9};});
+const order=[...T].sort((a,b)=>a.d-b.d); order.forEach((t,k)=>{t.t0=CLAMP1+0.04+k*0.08;});
+function rr(x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
+function headphones(k){ // k: 0 open -> 1 closed
+  const d=lerp(320,212,k), rot=lerp(0.30,0,k), cupW=150,cupH=244, cupTop=CY-40;
+  const ORANGE='#e8622c', DARK='#c24a1a', PAD='#2a2624', METAL='#9aa0a3';
+  // headband
+  const lx=CX-d, rx=CX+d, by=cupTop-74;
+  g.lineCap='round';
+  g.strokeStyle=ORANGE;g.lineWidth=40;g.beginPath();g.moveTo(lx,by);g.bezierCurveTo(lx,by-330,rx,by-330,rx,by);g.stroke();
+  g.strokeStyle=PAD;g.lineWidth=16;g.beginPath();g.moveTo(lx+8,by-40);g.bezierCurveTo(lx+20,by-300,rx-20,by-300,rx-8,by-40);g.stroke();
+  for(const s of [-1,1]){
+    const px=CX+s*d;
+    g.save();g.translate(px,by);g.rotate(-s*rot);
+    // slider
+    g.fillStyle=METAL;g.fillRect(-7,0,14,86);
+    // yoke
+    g.strokeStyle=METAL;g.lineWidth=10;g.beginPath();g.arc(0,150,92,Math.PI*1.18,Math.PI*1.82);g.stroke();
+    // cup
+    g.translate(0,74);
+    g.fillStyle=ORANGE;rr(-cupW/2,0,cupW,cupH,64);g.fill();
+    g.fillStyle=DARK;rr(-cupW/2+s*0,cupH*0.62,cupW,cupH*0.38,40);g.globalAlpha=0.35;g.fill();g.globalAlpha=1;
+    // cushion on inner side
+    g.fillStyle=PAD;rr(s>0?-cupW/2:cupW/2-34,16,34,cupH-32,17);
+    g.fill();
+    // highlight
+    g.fillStyle='rgba(255,255,255,0.22)';rr(s>0?cupW/2-46:-cupW/2+18,22,26,cupH*0.5,13);g.fill();
+    g.restore();
+  }
+}
+function draw(ms){
+  const t=cl(ms,0,DUR)/1000;
+  g.fillStyle='#dad7d0';g.fillRect(0,0,W,H);
+  // tags
+  for(const a of T){
+    let sx=1,al=1; if(t>a.t0){const u=ein(a.t0,a.t0+0.16,t);sx=1-u;al=1-u;}
+    if(al<=0.001)continue;
+    const wob=t<CLAMP1? Math.sin(t*a.f*2*Math.PI+a.ph)*4:0;
+    const cx=a.x+a.w/2+wob;
+    g.save();g.translate(cx,a.y);g.scale(sx,1);g.globalAlpha=al;
+    g.fillStyle='rgba(16,16,16,0.88)';rr(-a.w/2,0,a.w,a.h,8);g.fill();
+    g.fillStyle='#fff';g.font='700 50px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText(a.s,0,a.h/2+2);
+    g.restore();
+  }
+  headphones(ein(CLAMP0,CLAMP1,t));
+  // ending
+  const a1=ss(2.9,3.02,t);
+  if(a1>0){g.globalAlpha=a1;g.font='700 64px '+FONT;const s='[ 安静 ]';const w=g.measureText(s).width+56;
+    g.fillStyle='rgba(16,16,16,0.88)';rr(CX-w/2,1196,w,100,10);g.fill();
+    g.fillStyle='#fff';g.textAlign='center';g.textBaseline='middle';g.fillText(s,CX,1248);g.globalAlpha=1;}
+  const a2=ss(3.15,3.27,t);
+  if(a2>0){g.globalAlpha=a2;g.textAlign='center';g.textBaseline='alphabetic';
+    g.fillStyle='#1d1a18';g.font='800 132px "Arial Black",'+FONT;g.fillText('HUSH 1',CX,1470);
+    g.fillStyle='#3a3431';g.font='700 60px '+FONT;g.fillText('主动降噪耳机',CX,1556);g.globalAlpha=1;}
+  g.textAlign='left';
+}
+let stop=false;const start=performance.now();
+window.__seek=function(ms){stop=true;draw(ms);};
+function loop(){if(stop)return;draw((performance.now()-start)%DUR);requestAnimationFrame(loop);}
+draw(0);requestAnimationFrame(loop);
+})();
+</script></body></html>

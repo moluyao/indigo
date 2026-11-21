@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>新耳机</title>
+<style>
+  html,body{margin:0;padding:0;background:#e9e7e2;overflow:hidden;}
+  canvas{display:block;width:1080px;height:1920px;}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+(function(){
+const W=1080,H=1920,DUR=6;
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const FONT='"Microsoft YaHei","微软雅黑","PingFang SC",sans-serif';
+function rng(seed){let s=seed>>>0;return function(){s=(s+0x6D2B79F5)>>>0;let t=s;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
+function hash(a,b){let h=Math.imul(a*374761393+b*668265263,1274126177)>>>0;h=Math.imul(h^(h>>>13),1103515245)>>>0;return ((h^(h>>>16))>>>0)/4294967296;}
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const dock=x=>{x=clamp(x,0,1);return 1-Math.pow(1-x,3);};          // arrive & stop
+const sink=x=>{x=clamp(x,0,1);return x*x*x;};                       // pushed in, lands hard
+const R=rng(6061920);
+
+const WORDS=['嘀——','轰隆隆','哐当','叮咚','滴滴滴','嗡——','吵死了','咚咚咚','喂？喂？','哔——','咔嚓','呜——','砰！','叭叭','哗啦啦','嘟——','吱呀','轰','嗡嗡','叮','哐','嘀嘀','咣当','啪'];
+const words=[];
+for(let i=0;i<34;i++){
+  words.push({s:WORDS[i%WORDS.length],x:80+R()*920,y:170+R()*1620,size:Math.round(70+Math.pow(R(),1.6)*170),
+    rot:(R()-0.5)*0.5,t0:i<20?-1:(0.15+(i-20)*0.11),gray:R()<0.25});
+}
+
+const IMPACT=2.35, SLIDE0=1.55;
+const BG_NOISE='#e9e7e2', BG_QUIET='#123d2f', CUP='#161616', PAD='#3b3b3b', CREAM='#efe6cf';
+
+function cup(x,y,w,h,inner){ // inner: 1 = cushion on right side, -1 = on left side
+  ctx.fillStyle=CUP;
+  ctx.beginPath();ctx.roundRect(x,y,w,h,w/2);ctx.fill();
+  ctx.fillStyle=PAD;
+  const pw=44, px=inner>0?x+w-pw:x;
+  ctx.beginPath();ctx.roundRect(px,y+40,pw,h-80,pw/2);ctx.fill();
+}
+
+function draw(t){
+  const quiet=t>=IMPACT;
+  ctx.fillStyle=quiet?BG_QUIET:BG_NOISE;ctx.fillRect(0,0,W,H);
+  const k=sink((t-SLIDE0)/(IMPACT-SLIDE0)); // cups closing
+
+  if(!quiet){
+    // noise words: stepped jitter at 12 fps, squeezed inward as the cups close
+    const step=Math.floor(t*12);
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    words.forEach((w,i)=>{
+      if(t<w.t0) return;
+      const jx=(hash(i,step)-0.5)*16, jy=(hash(i+99,step)-0.5)*16, jr=(hash(i+199,step)-0.5)*0.06;
+      const x=540+(w.x-540)*(1-0.22*k)+jx, y=w.y+jy;
+      ctx.save();ctx.translate(x,y);ctx.rotate(w.rot+jr);
+      ctx.fillStyle=w.gray?'#7a7873':'#111111';
+      ctx.font='900 '+w.size+'px '+FONT;ctx.fillText(w.s,0,0);ctx.restore();
+    });
+  }
+
+  // headphones: cups pushed in from the screen edges, band pressed down from above
+  if(t>=SLIDE0){
+    const cw=232,ch=560,cy=950;
+    const lx=-40-300*(1-k), rx=W-cw+40+300*(1-k);
+    const by=-760*(1-k);
+    ctx.strokeStyle=CUP;ctx.lineWidth=56;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(lx+cw/2,cy+30+by*0);
+    ctx.save();ctx.translate(0,by);
+    ctx.beginPath();ctx.moveTo(76,cy+20);ctx.bezierCurveTo(76,cy-650,1004,cy-650,1004,cy+20);ctx.stroke();
+    ctx.restore();
+    cup(lx,cy,cw,ch,1);cup(rx,cy,cw,ch,-1);
+  }
+
+  if(quiet){
+    // one thin line of music, drawn once, then breathing
+    const u=dock((t-2.45)/1.0);
+    const x0=250,x1=830,xe=x0+(x1-x0)*u, cyw=1260;
+    const A=34+10*Math.sin((t-2.45)*2.1);
+    ctx.strokeStyle=CREAM;ctx.lineWidth=5;ctx.lineCap='round';ctx.beginPath();
+    for(let x=x0;x<=xe;x+=4){
+      const p=(x-x0)/(x1-x0);
+      const env=Math.sin(Math.PI*p);
+      const y=cyw+A*env*Math.sin(p*Math.PI*7+(t-2.45)*1.6);
+      if(x===x0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+
+    ctx.textAlign='center';ctx.textBaseline='alphabetic';
+    const a=dock((t-2.9)/0.35);
+    if(a>0){ctx.globalAlpha=a;ctx.fillStyle=CREAM;ctx.font='700 140px '+FONT;ctx.fillText('安静了。',540+35,1060+(1-a)*30);ctx.globalAlpha=1;}
+    const b=dock((t-4.15)/0.35);
+    if(b>0){ctx.globalAlpha=b;ctx.fillStyle=CREAM;ctx.font='400 58px '+FONT;ctx.fillText('戴上，世界就小声了。',540,1470+(1-b)*20);ctx.globalAlpha=1;}
+  }
+}
+
+let paused=false,start=null;
+function loop(now){if(paused)return;if(start===null)start=now;draw(((now-start)/1000)%DUR);requestAnimationFrame(loop);}
+window.__seek=function(ms){paused=true;draw(clamp(ms/1000,0,DUR-0.0001));};
+draw(0);requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

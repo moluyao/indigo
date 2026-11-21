@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>社区图书馆 · 周末活动</title>
+<style>
+  html,body{margin:0;padding:0;background:#1e3b30;}
+  #poster{position:relative;width:1080px;height:1350px;overflow:hidden;background:#1e3b30;
+    font-family:"Microsoft YaHei","微软雅黑",sans-serif;}
+  .head{position:absolute;left:96px;top:78px;color:#f1e6c8;}
+  .head .l1{font-size:52px;font-weight:400;letter-spacing:4px;line-height:1.2;}
+  .head .l2{font-size:92px;font-weight:700;letter-spacing:2px;line-height:1.15;margin-top:6px;}
+
+  .card{position:absolute;left:104px;top:372px;width:872px;height:900px;background:#e6d2a0;
+    transform:rotate(-1.6deg);transform-origin:50% 50%;box-shadow:0 14px 0 rgba(0,0,0,.28);
+    color:#1b1b1b;font-family:"SimSun","宋体",serif;}
+  .card .top{position:absolute;left:56px;right:56px;top:46px;display:flex;justify-content:space-between;align-items:baseline;
+    border-bottom:3px solid #1b1b1b;padding-bottom:18px;}
+  .card .top .t{font-size:46px;font-weight:700;letter-spacing:10px;}
+  .card .top .no{font-size:28px;}
+  .field{position:absolute;left:56px;right:56px;font-size:30px;display:flex;align-items:baseline;}
+  .field .k{white-space:nowrap;}
+  .field .v{flex:1;border-bottom:2px solid #1b1b1b;margin-left:12px;padding-left:10px;height:52px;position:relative;}
+  .hand{font-family:"KaiTi","STKaiti","楷体",serif;color:#1f2f6b;}
+  .field .v .hand{position:absolute;left:12px;bottom:4px;font-size:44px;white-space:nowrap;}
+
+  table{position:absolute;left:56px;top:330px;width:760px;border-collapse:collapse;font-size:28px;}
+  th{height:62px;border:2px solid #1b1b1b;font-weight:700;letter-spacing:6px;}
+  td{height:86px;border:2px solid #1b1b1b;position:relative;}
+  td.who{width:180px;} td.date{width:290px;}
+  td .hand{position:absolute;left:18px;bottom:10px;}
+  .stamp{position:absolute;left:206px;top:548px;width:336px;height:176px;transform:rotate(-6deg);
+    color:#c8262b;mix-blend-mode:multiply;opacity:.92;font-family:"SimHei","黑体",sans-serif;}
+  .stamp .b1{position:absolute;inset:0;border:9px solid #c8262b;border-radius:22px;}
+  .stamp .b2{position:absolute;inset:16px;border:3px solid #c8262b;border-radius:12px;}
+  .stamp .big{position:absolute;left:0;right:0;top:26px;text-align:center;font-size:90px;letter-spacing:14px;line-height:1;padding-left:18px;}
+  .stamp .sm{position:absolute;left:0;right:0;bottom:20px;text-align:center;font-size:28px;letter-spacing:10px;padding-left:10px;}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:52px;font-size:30px;display:flex;gap:40px;align-items:baseline;}
+  .foot .blank{display:inline-block;width:230px;border-bottom:2px solid #1b1b1b;}
+</style>
+</head>
+<body>
+<div id="poster">
+  <div class="head">
+    <div class="l1">这个周末，</div>
+    <div class="l2">图书馆不用小声</div>
+  </div>
+
+  <div class="card">
+    <div class="top"><span class="t">社区图书馆 借书卡</span><span class="no">编号 ______</span></div>
+
+    <div class="field" style="top:160px;"><span class="k">活　动：</span><span class="v"><span class="hand">亲子共读 · 旧书交换</span></span></div>
+    <div class="field" style="top:240px;"><span class="k">借阅期：</span><span class="v"><span class="hand" style="font-size:38px;">两天，周六和周日</span></span></div>
+
+    <table>
+      <tr><th>借阅者</th><th>还书日期</th><th>备注</th></tr>
+      <tr><td class="who"></td><td class="date"></td><td></td></tr>
+      <tr><td class="who"></td><td class="date"></td><td></td></tr>
+      <tr><td class="who"><span class="hand" style="font-size:60px;bottom:4px;left:52px;">你</span></td><td class="date"></td>
+          <td><span class="hand" style="font-size:28px;bottom:8px;line-height:1.2;">带上孩子，<br>也带上看完的旧书</span></td></tr>
+      <tr><td class="who"></td><td class="date"></td><td></td></tr>
+    </table>
+
+    <div class="stamp"><div class="b1"></div><div class="b2"></div>
+      <div class="big">本周末</div><div class="sm">欢迎入馆</div></div>
+
+    <div class="foot"><span>时间 <span class="blank"></span></span><span>地点：社区图书馆</span></div>
+  </div>
+</div>
+</body>
+</html>

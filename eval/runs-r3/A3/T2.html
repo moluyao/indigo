@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>天空为什么是蓝的</title>
+<style>
+html,body{margin:0;height:100%;background:#000;overflow:hidden}
+canvas{position:absolute;left:50%;top:50%;transform-origin:0 0}
+</style></head><body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function(){
+const W=1920,H=1080,cv=document.getElementById('c'),g=cv.getContext('2d');
+function fit(){const s=Math.min(innerWidth/W,innerHeight/H);cv.style.transform='translate(-50%,-50%) scale('+s+')';cv.style.transformOrigin='50% 50%';cv.style.left='50%';cv.style.top='50%';cv.style.position='absolute';cv.style.marginLeft='0';}
+addEventListener('resize',fit);fit();
+const FONT='"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC",sans-serif';
+// ---- deterministic hash ----
+function hash(a,b){let h=(a*374761393+b*668265263)|0;h=(h^(h>>>13))*1274126177|0;h=h^(h>>>16);return ((h>>>0)%1000000)/1000000;}
+// ---- geometry ----
+const GROUND=820;
+const S={x:150,y:330}, E={x:1785,y:738};
+const BL=Math.hypot(E.x-S.x,E.y-S.y), DX=(E.x-S.x)/BL, DY=(E.y-S.y)/BL;
+const AIR_X=300, AIR_S=(AIR_X-S.x)/DX, AIR_L=BL-AIR_S;
+const A={x:760,y:GROUND}, B={x:1790,y:GROUND};
+const AEYE={x:A.x,y:GROUND-78};
+// ---- spectrum: wavelength nm, display color ----
+const LAM=[450,500,550,600,680];
+const COL=['#5a86ff','#3fd6e6','#7be36b','#ffb52e','#ff4b3a'];
+const K0=1.9/AIR_L; // blue survives ~15% over full air path
+const K=LAM.map(l=>K0*Math.pow(450/l,4));
+const V=900; // px per sim second
+// ---- time warp: sim slows to zero 12.2 -> 13.0 s ----
+const T0=12.2,T1=13.0;
+// speed = 1-u linear decel -> integral u-u^2/2, reaches d/2 at u=1
+function simT2(t){ if(t<=T0) return t; const d=T1-T0; const u=Math.min(1,(t-T0)/d); return T0+d*(u-u*u/2); }
+const DT=0.004, NPH=Math.floor((T0+(T1-T0)/2)/DT)+1;
+// precompute photons
+const P=[];
+for(let i=0;i<NPH;i++){
+  const born=i*DT;
+  const wi=Math.floor(hash(i,1)*5);
+  const off=(hash(i,2)-0.5)*18; // lateral offset within beam
+  const sc=-Math.log(1-hash(i,3)*0.999999)/K[wi]; // scatter distance in air
+  const ang=hash(i,4)*Math.PI*2;
+  const scS=AIR_S+sc; // along-beam scatter position
+  const scatters=sc<AIR_L;
+  const tScat=born+scS/V;
+  const scx=S.x+DX*scS, scy=S.y+DY*scS;
+  let dx=Math.cos(ang),dy=Math.sin(ang);
+  let toEye=false;
+  if(scatters && tScat>6.9 && tScat<10.9 && Math.abs(scx-AEYE.x)<360 && hash(i,5)<0.55){
+    const ex=AEYE.x-scx, ey=AEYE.y-scy, el=Math.hypot(ex,ey); dx=ex/el; dy=ey/el; toEye=true;
+  }
+  P.push({born,wi,off,scatters,tScat,scS,scx,scy,dx,dy,toEye});
+}
+function ease(u){u=Math.max(0,Math.min(1,u));return u*u*(3-2*u);}
+function surv(i,s){return Math.exp(-K[i]*Math.max(0,s-AIR_S));}
+function beamRGB(s){
+  const r=(surv(3,s)+surv(4,s))/2, gg=surv(2,s), b=(surv(0,s)+surv(1,s))/2;
+  const m=Math.max(r,gg,b); return [255*r/m|0,255*gg/m|0,255*b/m|0, (r+gg+b)/3];
+}
+// ---- captions ----
+const CAPS=[[0,3.2,'天空为什么是蓝的？'],[3.2,7.2,'空气把蓝光弹向四面八方'],[7.2,10.9,'弹进眼里的蓝，就是蓝天'],[10.9,15.01,'蓝被弹光了，剩下就是夕阳']];
+function person(x,y,col){
+  g.fillStyle=col;
+  g.beginPath();g.arc(x,y-78,24,0,Math.PI*2);g.fill();
+  g.beginPath();g.moveTo(x-46,y);g.quadraticCurveTo(x-44,y-46,x,y-48);g.quadraticCurveTo(x+44,y-46,x+46,y);g.closePath();g.fill();
+}
+function draw(ms){
+  const t=Math.max(0,Math.min(15,ms/1000)), st=simT2(t);
+  // sky base
+  g.fillStyle='#05060a';g.fillRect(0,0,W,H);
+  // accumulated blue sky (only where air is)
+  const sky=st<0.5?0:1-Math.exp(-(st-0.5)/1.6);
+  if(sky>0){
+    const gr=g.createLinearGradient(AIR_X-40,0,AIR_X+120,0);
+    gr.addColorStop(0,'rgba(58,106,214,0)');gr.addColorStop(1,'rgba(58,106,214,'+(sky*0.97).toFixed(3)+')');
+    g.fillStyle=gr;g.fillRect(AIR_X-40,0,W,GROUND);
+    const vg=g.createLinearGradient(0,0,0,GROUND);
+    vg.addColorStop(0,'rgba(20,40,110,'+(sky*0.35).toFixed(3)+')');vg.addColorStop(1,'rgba(120,170,240,'+(sky*0.18).toFixed(3)+')');
+    g.fillStyle=vg;g.fillRect(AIR_X+60,0,W,GROUND);
+  }
+  // sunset glow near B (S4)
+  const sun=ease((t-10.9)/1.1);
+  if(sun>0){
+    const rg=g.createRadialGradient(E.x,E.y,10,E.x,E.y,620);
+    rg.addColorStop(0,'rgba(255,120,50,'+(0.85*sun).toFixed(3)+')');
+    rg.addColorStop(0.45,'rgba(235,90,60,'+(0.45*sun).toFixed(3)+')');
+    rg.addColorStop(1,'rgba(200,70,60,0)');
+    g.fillStyle=rg;g.fillRect(900,200,W-900,GROUND-200);
+  }
+  // sun
+  g.fillStyle='#fffbea';g.beginPath();g.arc(S.x,S.y,64,0,Math.PI*2);g.fill();
+  // beam band
+  const front=Math.min(BL,st*V);
+  if(front>0){
+    const step=8;
+    for(let s=0;s<front;s+=step){
+      const c=beamRGB(s);const s2=Math.min(front,s+step+1);
+      g.strokeStyle='rgba('+c[0]+','+c[1]+','+c[2]+','+(0.55+0.4*c[3]).toFixed(3)+')';
+      g.lineWidth=22;g.beginPath();g.moveTo(S.x+DX*s,S.y+DY*s);g.lineTo(S.x+DX*s2,S.y+DY*s2);g.stroke();
+    }
+  }
+  // photons
+  g.lineCap='round';
+  for(let i=0;i<P.length;i++){
+    const p=P[i]; if(p.born>st) break;
+    const age=st-p.born; const s=age*V;
+    let x,y,a=1,len=16,lw=4,dirx=DX,diry=DY;
+    if(!p.scatters||st<p.tScat){
+      if(s>BL+40) continue;
+      x=S.x+DX*s-DY*p.off; y=S.y+DY*s+DX*p.off; len=12; lw=3; a=0.9;
+    }else{
+      const d=(st-p.tScat)*V*(p.toEye?0.9:0.8);
+      x=p.scx+p.dx*d; y=p.scy+p.dy*d; dirx=p.dx; diry=p.dy;
+      if(p.toEye){ const tot=Math.hypot(AEYE.x-p.scx,AEYE.y-p.scy); if(d>tot-26) continue; len=34;lw=5;a=1;}
+      else { a=Math.max(0,1-d/520); if(a<=0) continue; if(y>GROUND-4) continue; len=20;lw=5;}
+    }
+    g.strokeStyle=COL[p.wi];g.globalAlpha=a;g.lineWidth=lw;
+    g.beginPath();g.moveTo(x-dirx*len,y-diry*len);g.lineTo(x,y);g.stroke();
+  }
+  g.globalAlpha=1;
+  // focus dim (S3)
+  const foc=ease((t-7.2)/0.35)*(1-ease((t-10.9)/0.4));
+  if(foc>0){
+    const rg=g.createRadialGradient(AEYE.x,AEYE.y-120,180,AEYE.x,AEYE.y-120,560);
+    rg.addColorStop(0,'rgba(0,0,0,0)');rg.addColorStop(1,'rgba(0,0,0,'+(0.55*foc).toFixed(3)+')');
+    g.fillStyle=rg;g.fillRect(0,0,W,GROUND);
+  }
+  // ground
+  g.fillStyle='#16130f';g.fillRect(0,GROUND,W,H-GROUND);
+  g.fillStyle='#3a332a';g.fillRect(0,GROUND,W,3);
+  person(A.x,GROUND,'#e6dfcf');
+  person(B.x,GROUND,'#e6dfcf');
+  // B eye glow (S4): sees orange sun
+  if(sun>0){g.fillStyle='rgba(255,150,70,'+(0.9*sun).toFixed(3)+')';g.beginPath();g.arc(E.x-34,E.y+2,10,0,Math.PI*2);g.fill();}
+  // labels
+  g.textBaseline='alphabetic';
+  g.font='500 46px '+FONT; g.fillStyle='#8f97a8'; g.textAlign='left'; g.fillText('示意图',128,108);
+  const tagA=ease((t-3.3)/0.25);
+  if(tagA>0){g.globalAlpha=tagA;g.font='600 52px '+FONT;g.fillStyle='#ffffff';g.textAlign='right';
+    g.fillText('蓝光被弹开的几率约是红光的 6 倍',1792,130);g.globalAlpha=1;}
+  g.font='600 52px '+FONT;
+  const la=ease((t-7.3)/0.25);
+  if(la>0){g.globalAlpha=la;g.fillStyle='#9fc0ff';g.textAlign='center';g.fillText('抬头看天',A.x,898);g.globalAlpha=1;}
+  const lb=ease((t-11.0)/0.25);
+  if(lb>0){g.globalAlpha=lb;g.fillStyle='#ffb27a';g.textAlign='right';g.fillText('看向落日',1792,898);g.globalAlpha=1;}
+  // caption (instant swap, always opaque)
+  let cap=CAPS[0][2]; for(const c of CAPS){ if(t>=c[0]) cap=c[2]; }
+  g.font='700 84px '+FONT; g.fillStyle='#ffffff'; g.textAlign='left';
+  g.fillText(cap,128,1022);
+}
+let seeking=false,start=performance.now();
+window.__seek=function(ms){seeking=true;draw(ms);};
+function loop(){ if(seeking) return; const ms=(performance.now()-start)%15000; draw(ms); requestAnimationFrame(loop);}
+draw(0);requestAnimationFrame(loop);
+})();
+</script></body></html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>天空为什么是蓝的</title>
+<style>
+  html,body{margin:0;padding:0;background:#000;}
+  body{width:1920px;height:1080px;overflow:hidden;}
+  canvas{display:block;}
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+(function(){
+const cv=document.getElementById('c'), g=cv.getContext('2d');
+const W=1920,H=1080,GY=940,DUR=15000;
+const FONT='"Microsoft YaHei","PingFang SC","Noto Sans CJK SC",sans-serif';
+const SUN={x:200,y:300,r:70}, P={x:980,y:300}, EYE={x:1420,y:902};
+const C=500; // 波速 px/s
+const WAVES=[{col:'#E5553F',lam:140,dy:-30,name:'red'},{col:'#4FB35E',lam:110,dy:0,name:'green'},{col:'#5B8CFF',lam:90,dy:30,name:'blue'}];
+const SKY='#4E8FDD';
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const seg=(t,a,b)=>clamp((t-a)/(b-a),0,1);
+const dock=x=>1-Math.pow(1-x,2.6);           // 停靠
+const sink=x=>x<.5?2*x*x*x*2:1-Math.pow(-2*x+2,3)/2; // 沉入（两端缓，后段落定）
+const away=x=>x*x*x;                           // 抽离
+// 固定种子
+let s=1531;const rnd=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};
+const N=46, PTS=[];
+for(let i=0;i<N;i++){
+  // 抖动网格，保证铺满
+  const cx=i%9, cy=Math.floor(i/9);
+  PTS.push({x:80+cx*220+rnd()*120, y:50+cy*170+rnd()*90, ti:10.2+3.0*Math.pow(i/N,0.6), o:rnd()});
+}
+// 按出现顺序：离 P 近的先
+PTS.sort((a,b)=>Math.hypot(a.x-P.x,a.y-P.y)-Math.hypot(b.x-P.x,b.y-P.y));
+PTS.forEach((p,i)=>p.ti=10.25+3.0*Math.pow(i/N,0.6));
+
+function txt(str,x,y,size,col,alpha,weight,align){
+  g.save();g.globalAlpha=alpha;g.fillStyle=col;g.font=(weight||400)+' '+size+'px '+FONT;
+  g.textAlign=align||'left';g.textBaseline='alphabetic';g.fillText(str,x,y);g.restore();
+}
+function wave(x0,x1,yc,lam,amp,col,lw,t,alpha,ampFn){
+  g.save();g.globalAlpha=alpha;g.strokeStyle=col;g.lineWidth=lw;g.lineJoin='round';g.beginPath();
+  for(let x=x0;x<=x1;x+=3){
+    const a=ampFn?ampFn(x):amp;
+    const y=yc+a*Math.sin(2*Math.PI*(x-C*t)/lam);
+    x===x0?g.moveTo(x,y):g.lineTo(x,y);
+  }
+  g.stroke();g.restore();
+}
+function rayWave(ax,ay,bx,by,len,lam,amp,col,lw,t,alpha){
+  const L=Math.hypot(bx-ax,by-ay), ux=(bx-ax)/L, uy=(by-ay)/L, nx=-uy, ny=ux;
+  const l=Math.min(len,L); if(l<=0)return;
+  g.save();g.globalAlpha=alpha;g.strokeStyle=col;g.lineWidth=lw;g.beginPath();
+  for(let d=0;d<=l;d+=3){
+    const a=amp*Math.sin(2*Math.PI*(d-C*t)/lam);
+    const x=ax+ux*d+nx*a, y=ay+uy*d+ny*a;
+    d===0?g.moveTo(x,y):g.lineTo(x,y);
+  }
+  g.stroke();g.restore();
+}
+const CAPS=[
+  {a:3.0,b:5.0,s:'空气分子把波长短的蓝光，撞向四面八方'},
+  {a:5.0,b:6.65,s:'波长长的红光，大多直接穿了过去'},
+  {a:6.7,b:10.0,s:'波长越短，被撞开得越厉害'},
+  {a:10.1,b:13.5,s:'看向天空任何一处，都有蓝光从那里射向你'},
+  {a:13.6,b:99,s:'所以，天空是蓝的。',big:1},
+];
+
+function draw(ms){
+  const t=clamp(ms,0,DUR)/1000;
+  // 天空：没有散射时是黑的
+  g.fillStyle='#08090B';g.fillRect(0,0,W,GY);
+  // 场景 4：被蓝光"涂"出来的天空
+  g.save();g.beginPath();g.rect(0,0,W,GY);g.clip();
+  const fillP=seg(t,2.9,4.2);
+  if(t>2.9){ // P 处先亮起一小片
+    g.globalAlpha=0.9;g.fillStyle=SKY;g.beginPath();g.arc(P.x,P.y,dock(fillP)*60+ (t>10.1?dock(seg(t,10.1,11.0))*260:0),0,7);g.fill();
+  }
+  PTS.forEach(p=>{
+    if(t<p.ti)return;
+    const r=dock(seg(t,p.ti,p.ti+1.1))*290;
+    g.globalAlpha=0.9;g.fillStyle=SKY;g.beginPath();g.arc(p.x,p.y,r,0,7);g.fill();
+  });
+  const full=dock(seg(t,13.0,13.7));
+  if(full>0){g.globalAlpha=full;g.fillStyle=SKY;g.fillRect(0,0,W,GY);}
+  g.restore();
+
+  // 场景 3 时示意图变暗
+  const dim=1-0.82*(dock(seg(t,6.7,7.1))-dock(seg(t,9.8,10.2)));
+
+  // 太阳：平涂白盘，无光晕
+  g.save();g.globalAlpha=1;g.fillStyle='#F6F2E6';g.beginPath();g.arc(SUN.x,SUN.y,SUN.r,0,7);g.fill();g.restore();
+
+  // 三色光波（真实波长比例 700:550:450）
+  const front=Math.min(W+20, 760+C*t);
+  const scat=dock(seg(t,2.9,3.6));
+  WAVES.forEach(w=>{
+    const keep = w.name==='blue'?1-0.65*scat : w.name==='green'?1-0.25*scat : 1;
+    wave(SUN.x+SUN.r+10, front, SUN.y+w.dy, w.lam, 16, w.col, 4, t, dim,
+      x=> x>P.x+20 ? 16*keep : 16);
+  });
+
+  // 散射圆环（蓝）
+  if(t>2.9){
+    g.save();g.beginPath();g.rect(0,0,W,GY);g.clip();
+    const ringFade=1-seg(t,12.6,13.4);
+    for(let k=0;k<30;k++){
+      const r=(t-2.9)*C - k*90;
+      if(r<=8||r>1150)continue;
+      g.globalAlpha=0.75*(1-r/1150)*dim*ringFade;g.strokeStyle='#7DA6FF';g.lineWidth=3;
+      g.beginPath();g.arc(P.x,P.y,r,0,7);g.stroke();
+    }
+    g.restore();
+  }
+  // P → 眼睛 的那一束蓝光
+  if(t>3.7){
+    rayWave(P.x,P.y,EYE.x,EYE.y,(t-3.7)*C*1.3,90,9,t>10.1?'#D6E5FF':'#8FB2FF',5,t,dim);
+  }
+  // 空气分子
+  g.save();g.globalAlpha=dim*dock(seg(t,2.4,2.9));g.strokeStyle='#E8E8E8';g.lineWidth=4;
+  g.beginPath();g.arc(P.x,P.y,13,0,7);g.stroke();g.fillStyle='#E8E8E8';g.beginPath();g.arc(P.x,P.y,5,0,7);g.fill();g.restore();
+  if(t>2.6&&t<6.7) txt('空气分子',P.x+26,P.y-36,38,'#E8E8E8',dim*dock(seg(t,2.6,2.9))*(1-seg(t,6.4,6.7)),400);
+
+  // 场景 4：每一处天空都把蓝光送向眼睛
+  PTS.forEach(p=>{
+    if(t<p.ti||t>p.ti+1.0)return;
+    const k=seg(t,p.ti,p.ti+0.45);
+    const L=Math.hypot(EYE.x-p.x,EYE.y-p.y);
+    const hx=p.x+(EYE.x-p.x)*k, hy=p.y+(EYE.y-p.y)*k;
+    const tailK=Math.max(0,k-0.35), tx=p.x+(EYE.x-p.x)*tailK, ty=p.y+(EYE.y-p.y)*tailK;
+    const a=1-seg(t,p.ti+0.6,p.ti+1.0);
+    g.save();g.globalAlpha=a;g.strokeStyle='#E4EEFF';g.lineWidth=3;g.beginPath();g.moveTo(tx,ty);g.lineTo(hx,hy);g.stroke();
+    g.fillStyle='#FFFFFF';g.beginPath();g.arc(p.x,p.y,6,0,7);g.fill();g.restore();
+  });
+
+  // 地面（兼字幕带）
+  g.fillStyle='#2E2924';g.fillRect(0,GY,W,H-GY);
+  g.fillStyle='#4A423A';g.fillRect(0,GY,W,4);
+  // 眼睛
+  g.save();g.globalAlpha=1;g.strokeStyle='#F2EEE6';g.lineWidth=4;g.beginPath();
+  g.moveTo(EYE.x-40,EYE.y+14);g.quadraticCurveTo(EYE.x,EYE.y-26,EYE.x+40,EYE.y+14);
+  g.quadraticCurveTo(EYE.x,EYE.y+40,EYE.x-40,EYE.y+14);g.stroke();
+  g.fillStyle='#F2EEE6';g.beginPath();g.arc(EYE.x-6,EYE.y+8,10,0,7);g.fill();g.restore();
+  txt('你的眼睛',EYE.x+58,EYE.y+24,36,'#F2EEE6',1,400);
+
+  // 开场问题（第 0 帧即完整）
+  const qOut=away(seg(t,2.6,2.95));
+  if(qOut<1){
+    txt('天空为什么是蓝的？',520,610-qOut*40,110,'#F6F2E6',1-qOut,700);
+    txt('没有空气的月球上，白天的天空是黑的',524,690-qOut*40,40,'#B9B4AA',1-qOut,400);
+  }
+
+  // 场景 3：量一下"更容易"
+  const s3=dock(seg(t,6.75,7.2))*(1-away(seg(t,9.75,10.05)));
+  if(s3>0){
+    const X=560;
+    txt('红光　波长约 700 纳米',X,430,44,'#F6F2E6',s3,400);
+    g.save();g.globalAlpha=s3;g.fillStyle='#E5553F';g.fillRect(X,456,100,48);g.restore();
+    txt('1',X+120,496,44,'#F6F2E6',s3,700);
+    txt('蓝光　波长约 450 纳米',X,620,44,'#F6F2E6',s3,400);
+    const bw=100+486*sink(seg(t,7.5,8.5));
+    g.save();g.globalAlpha=s3;g.fillStyle='#5B8CFF';g.fillRect(X,646,bw,48);g.restore();
+    const n=dock(seg(t,8.5,8.8));
+    if(n>0) txt('约 5.9 倍',X+bw+28,694-(1-n)*14,72,'#F6F2E6',s3*n,700);
+    txt('被散射的强度 ∝ 1 ÷ 波长⁴　　(700 ÷ 450)⁴ ≈ 5.9',X,820,38,'#B9B4AA',s3*dock(seg(t,7.2,7.6)),400);
+  }
+
+  // 字幕（写在地面上）
+  CAPS.forEach(c=>{
+    if(t<c.a-0.01||t>c.b+0.2)return;
+    const i=dock(seg(t,c.a,c.a+0.25)), o=away(seg(t,c.b-0.18,c.b));
+    const a=i*(1-o); if(a<=0)return;
+    txt(c.s,110,GY+(c.big?96:90)+(1-i)*16-o*12,c.big?66:56,'#F6F2E6',a,c.big?700:400);
+  });
+}
+
+let fixed=false, t0=null;
+window.__seek=function(ms){fixed=true;draw(ms);};
+function loop(now){
+  if(fixed)return;
+  if(t0===null)t0=now;
+  draw((now-t0)%DUR);
+  requestAnimationFrame(loop);
+}
+draw(0);
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

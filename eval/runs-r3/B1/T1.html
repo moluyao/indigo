@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>梧桐社区图书馆 · 周末活动</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1080px;height:1350px;overflow:hidden;background:#F2EADB}
+  body{font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB","Noto Sans CJK SC",sans-serif;color:#1E3A2C}
+  .poster{position:relative;width:1080px;height:1350px;overflow:hidden;
+    background:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,.55), transparent 55%),
+      #F2EADB;}
+  .serif{font-family:"Songti SC","STSong","Noto Serif CJK SC","Source Han Serif SC","SimSun",serif}
+
+  /* top meta */
+  .meta{position:absolute;left:80px;right:80px;top:64px;display:flex;justify-content:space-between;align-items:center;
+    font-size:24px;letter-spacing:4px;font-weight:700}
+  .meta .tag{background:#1E3A2C;color:#F2EADB;padding:8px 18px;border-radius:40px;letter-spacing:3px;font-size:22px}
+  .rule{position:absolute;left:80px;right:80px;top:122px;height:3px;background:#1E3A2C}
+
+  /* headline */
+  .kicker{position:absolute;left:80px;top:168px;font-size:34px;font-weight:700;color:#D9503A;letter-spacing:6px}
+  .h1{position:absolute;left:72px;top:226px;font-size:146px;line-height:1.05;font-weight:900;letter-spacing:-4px;color:#1E3A2C}
+  .h1 .red{color:#D9503A}
+  .sub{position:absolute;left:84px;top:716px;font-size:32px;line-height:1.55;color:#3D5446;letter-spacing:1px}
+
+  /* shelf */
+  .shelf{position:absolute;right:62px;top:176px;width:330px;height:460px}
+  .books{position:absolute;left:0;right:0;bottom:22px;height:440px;display:flex;align-items:flex-end;gap:5px}
+  .b{position:relative;border-radius:5px 5px 2px 2px;box-shadow:inset -6px 0 0 rgba(0,0,0,.12)}
+  .b::before,.b::after{content:"";position:absolute;left:8px;right:8px;height:4px;background:rgba(255,255,255,.55);border-radius:2px}
+  .b::before{top:22px}.b::after{bottom:26px}
+  .board{position:absolute;left:-14px;right:-14px;bottom:0;height:22px;background:#1E3A2C;border-radius:4px}
+  .lean{transform-origin:bottom right;transform:rotate(-14deg);margin-left:28px}
+  .label{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);writing-mode:vertical-rl;white-space:nowrap;
+    font-size:20px;font-weight:700;letter-spacing:4px;color:#F2EADB}
+
+  /* stamp */
+  .stamp{position:absolute;right:110px;top:668px;width:150px;height:150px;border-radius:50%;background:#E8B13A;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;transform:rotate(-10deg);
+    box-shadow:0 0 0 6px #F2EADB,0 0 0 9px #E8B13A}
+  .stamp b{font-size:46px;line-height:1;color:#1E3A2C;font-weight:900}
+  .stamp span{font-size:19px;margin-top:6px;letter-spacing:2px;color:#1E3A2C;font-weight:700}
+
+  /* schedule */
+  .sched{position:absolute;left:80px;right:80px;top:850px;display:grid;grid-template-columns:1fr 1fr;gap:28px}
+  .day{background:#FBF6EC;border:3px solid #1E3A2C;border-radius:22px;padding:28px 30px 18px;position:relative}
+  .day h3{display:flex;align-items:baseline;gap:14px;font-size:44px;font-weight:900;margin-bottom:12px}
+  .day h3 small{font-size:24px;font-weight:700;color:#7A8A7F;letter-spacing:1px}
+  .day.sat h3 .d{color:#D9503A}
+  .day.sun h3 .d{color:#2F6B8F}
+  .item{display:grid;grid-template-columns:104px 1fr;align-items:start;padding:16px 0;border-top:2px dashed rgba(30,58,44,.25)}
+  .item .t{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;color:#1E3A2C;padding-top:3px}
+  .item .n{font-size:31px;font-weight:700;line-height:1.25}
+  .item .d2{font-size:21px;color:#6A7B70;margin-top:5px;line-height:1.4}
+
+  /* footer */
+  .foot{position:absolute;left:0;right:0;bottom:0;height:150px;background:#1E3A2C;color:#F2EADB;
+    display:flex;align-items:center;padding:0 80px;gap:44px}
+  .foot .k{font-size:20px;letter-spacing:3px;color:#9DB3A4;margin-bottom:6px}
+  .foot .v{font-size:29px;font-weight:700;letter-spacing:1px}
+  .foot .sep{width:2px;height:66px;background:rgba(242,234,219,.25)}
+  .foot .cta{margin-left:auto;background:#E8B13A;color:#1E3A2C;font-weight:900;font-size:28px;padding:16px 28px;border-radius:14px;letter-spacing:2px}
+</style>
+</head>
+<body>
+<div class="poster">
+  <div class="meta"><span>梧桐社区图书馆</span><span class="tag">WEEKEND · 周末活动</span></div>
+  <div class="rule"></div>
+
+  <div class="kicker">本周六 · 周日</div>
+  <div class="h1 serif">周末，<br>来图书馆<br><span class="red">慢慢读</span>。</div>
+  <div class="sub">绘本共读、旧书交换、读书会、手作书签——<br>大人小孩都有位置，坐下就能参加。</div>
+
+  <div class="shelf">
+    <div class="books">
+      <div class="b" style="width:44px;height:330px;background:#D9503A"></div>
+      <div class="b" style="width:58px;height:400px;background:#1E3A2C"><span class="label">一起读</span></div>
+      <div class="b" style="width:36px;height:290px;background:#E8B13A"></div>
+      <div class="b" style="width:50px;height:360px;background:#2F6B8F"></div>
+      <div class="b" style="width:40px;height:250px;background:#C9B79A"></div>
+      <div class="b lean" style="width:46px;height:320px;background:#D9503A;margin-left:30px"></div>
+    </div>
+    <div class="board"></div>
+  </div>
+
+  <div class="stamp"><b>免费</b><span>无需门票</span></div>
+
+  <div class="sched">
+    <div class="day sat">
+      <h3><span class="d">周六</span><small>SAT</small></h3>
+      <div class="item"><div class="t">10:00</div><div><div class="n">亲子绘本共读</div><div class="d2">3–8 岁 · 少儿阅览区</div></div></div>
+      <div class="item"><div class="t">14:30</div><div><div class="n">旧书交换市集</div><div class="d2">带 1 本旧书，换 1 本回家</div></div></div>
+    </div>
+    <div class="day sun">
+      <h3><span class="d">周日</span><small>SUN</small></h3>
+      <div class="item"><div class="t">10:00</div><div><div class="n">手作书签工坊</div><div class="d2">材料免费 · 限 20 人</div></div></div>
+      <div class="item"><div class="t">15:00</div><div><div class="n">午后读书会</div><div class="d2">本期共读《小王子》</div></div></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div><div class="k">地点</div><div class="v">图书馆一楼 · 活动室</div></div>
+    <div class="sep"></div>
+    <div><div class="k">报名</div><div class="v">服务台登记 / 到场即可</div></div>
+    <div class="cta">欢迎全家来</div>
+  </div>
+</div>
+</body>
+</html>
